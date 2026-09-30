@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>MetaCota — Metas e Vendas de Consórcio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#0b1220; --bg2:#0f172a; --card:#131c31; --card2:#18233d; --line:#243152;
+  --tx:#e6ecf7; --mut:#8b9bb8; --pri:#10b981; --pri2:#059669; --gold:#f5b73b;
+  --red:#ef4444; --blue:#3b82f6; --pur:#a855f7; --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--pri)}
+.hidden{display:none!important}
+.mut{color:var(--mut)} .sm{font-size:.82rem} .xs{font-size:.72rem} .b{font-weight:700}
+.green{color:var(--pri)} .red{color:var(--red)} .gold{color:var(--gold)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.grow{flex:1}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.mt{margin-top:14px} .mt2{margin-top:24px} .mb{margin-bottom:12px}
+
+/* Botões / inputs */
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer;background:var(--card2);border:1px solid var(--line);transition:.15s;white-space:nowrap}
+.btn:hover{filter:brightness(1.15)}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#04130d}
+.btn.red{background:transparent;border-color:#5b2230;color:#fca5a5}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#241a02}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 10px;font-size:.8rem;border-radius:8px}
+.btn.big{padding:16px 22px;font-size:1.05rem;border-radius:14px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+label{display:block;font-size:.8rem;color:var(--mut);margin:12px 0 6px;font-weight:500}
+input,select,textarea{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--pri)}
+input[type=checkbox]{width:auto;accent-color:var(--pri);transform:scale(1.2)}
+.chk{display:flex;gap:10px;align-items:center;margin:12px 0;color:var(--tx);font-size:.9rem}
+
+/* Login */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(1200px 600px at 20% -10%,#10b98122,transparent),radial-gradient(900px 500px at 110% 110%,#f5b73b18,transparent),var(--bg)}
+.auth-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.25rem;letter-spacing:-.02em}
+.logo i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--pri),var(--gold));display:grid;place-items:center;font-style:normal;color:#04130d;font-size:1rem}
+
+/* Shell */
+.top{position:sticky;top:0;z-index:20;background:#0b1220ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.top .office{font-size:.8rem;color:var(--mut);border-left:1px solid var(--line);padding-left:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{max-width:1200px;margin:0 auto;display:flex;gap:4px;padding:0 12px 8px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:transparent;border:0;padding:8px 12px;border-radius:9px;color:var(--mut);font-weight:600;cursor:pointer;white-space:nowrap;font-size:.88rem}
+.tab.on{background:var(--card2);color:var(--tx)}
+main{max-width:1200px;margin:0 auto;padding:18px 16px 110px}
+.support{background:#7c2d12;color:#fed7aa;text-align:center;padding:6px;font-size:.8rem}
+.support button{background:#fed7aa;color:#7c2d12;border:0;border-radius:6px;padding:2px 8px;margin-left:8px;font-weight:700;cursor:pointer}
+h1{font-size:1.4rem;font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.05rem;font-weight:700;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.kpi .v{font-size:1.45rem;font-weight:800;margin-top:4px;letter-spacing:-.02em}
+.kpi .l{font-size:.75rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.bar{height:10px;background:var(--bg2);border-radius:99px;overflow:hidden;margin-top:8px}
+.bar>div{height:100%;background:linear-gradient(90deg,var(--pri2),var(--pri));border-radius:99px;transition:width .6s}
+.bar.done>div{background:linear-gradient(90deg,#d99a1e,var(--gold))}
+.badge{display:inline-block;padding:3px 8px;border-radius:99px;font-size:.7rem;font-weight:700;background:var(--card2);border:1px solid var(--line)}
+.badge.g{background:#064e3b;border-color:#065f46;color:#6ee7b7}
+.badge.r{background:#450a0a;border-color:#7f1d1d;color:#fca5a5}
+.badge.y{background:#422006;border-color:#713f12;color:#fcd34d}
+.badge.b{background:#172554;border-color:#1e3a8a;color:#93c5fd}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;color:var(--mut);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;padding:8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 8px;border-bottom:1px solid #1c2742;vertical-align:middle}
+.tbl tr.canc td{opacity:.5;text-decoration:line-through}
+.tbl tr.canc td.nostrike{text-decoration:none;opacity:1}
+.tblw{overflow-x:auto}
+.empty{text-align:center;color:var(--mut);padding:30px 10px}
+.fab{position:fixed;right:18px;bottom:18px;z-index:30;box-shadow:0 10px 30px #10b98155}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{background:var(--card2);border:1px solid var(--line);border-radius:99px;padding:6px 10px;font-size:.8rem;cursor:pointer}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#04130d;font-weight:700}
+.chip .x{margin-left:6px;opacity:.6}
+.hbar{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:.85rem}
+.hbar .n{width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar .t{flex:1;height:14px;background:var(--bg2);border-radius:6px;overflow:hidden}
+.hbar .t>div{height:100%;background:var(--pri);border-radius:6px}
+.hbar .v{width:110px;text-align:right;font-weight:600}
+.vchart{display:flex;align-items:flex-end;gap:6px;height:180px;padding-top:10px}
+.vchart .c{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.vchart .cols{display:flex;gap:2px;align-items:flex-end;height:100%;width:100%;justify-content:center}
+.vchart .col{width:42%;border-radius:4px 4px 0 0;background:var(--pri);min-height:2px}
+.vchart .col.m{background:#334155}
+.vchart .col.cx{background:var(--red)}
+.vchart .lb{font-size:.68rem;color:var(--mut)}
+.rank-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #1c2742}
+.rank-pos{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--card2);font-size:.85rem;flex-shrink:0}
+.p1{background:linear-gradient(135deg,#fde68a,#d97706);color:#3b2400}
+.p2{background:linear-gradient(135deg,#e5e7eb,#9ca3af);color:#1f2937}
+.p3{background:linear-gradient(135deg,#fdba74,#b45309);color:#2b1400}
+.me{background:#10b98114;border-radius:10px}
+.prize-img{width:100%;height:140px;object-fit:cover;border-radius:10px;margin-bottom:10px;background:var(--bg2)}
+
+/* Modal / toast */
+.modal-bg{position:fixed;inset:0;background:#000a;z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:0}
+@media(min-width:640px){.modal-bg{align-items:center;padding:20px}}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:92vh;overflow:auto;padding:22px}
+@media(min-width:640px){.modal{border-radius:20px}}
+.modal h2{font-size:1.15rem}
+.modal .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;position:sticky;bottom:-22px;background:var(--card);padding:12px 0}
+.toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);padding:12px 18px;border-radius:12px;z-index:200;font-weight:600;box-shadow:0 10px 30px #0008;max-width:92vw}
+.toast.ok{border-color:var(--pri)} .toast.err{border-color:var(--red)}
+.money-quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.loader{min-height:100vh;display:grid;place-items:center;color:var(--mut)}
+
+/* ===== TV ===== */
+.tv{position:fixed;inset:0;background:radial-gradient(1400px 700px at 10% -20%,#10b98122,transparent),radial-gradient(1000px 600px at 110% 120%,#f5b73b14,transparent),#070d18;display:flex;flex-direction:column;overflow:hidden;cursor:none}
+.tv-top{display:flex;align-items:center;justify-content:space-between;padding:1.6vw 2.6vw .8vw}
+.tv-top .logo{font-size:1.6vw}
+.tv-top .logo i{width:2.4vw;height:2.4vw;font-size:1.2vw;border-radius:.6vw}
+.tv-clock{font-size:1.8vw;font-weight:700;text-align:right}
+.tv-clock small{display:block;font-size:.9vw;color:var(--mut);font-weight:500}
+.tv-stage{flex:1;padding:1vw 2.6vw;position:relative}
+.tv-screen{position:absolute;inset:1vw 2.6vw;animation:fadein .7s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(1.5vw)}to{opacity:1;transform:none}}
+.tv-title{font-size:1.2vw;letter-spacing:.3em;color:var(--mut);font-weight:700;text-transform:uppercase;margin-bottom:1.2vw}
+.tv-hero{background:#101a2e;border:1px solid var(--line);border-radius:1.6vw;padding:2.2vw 2.6vw}
+.tv-hero .big{font-size:6vw;font-weight:900;letter-spacing:-.03em;line-height:1}
+.tv-hero .of{font-size:2vw;color:var(--mut);font-weight:600}
+.tv-bar{height:3.2vw;background:#0a1222;border-radius:99px;overflow:hidden;margin:1.6vw 0 1vw;position:relative}
+.tv-bar>div{height:100%;background:linear-gradient(90deg,#059669,#34d399);border-radius:99px;transition:width 1.2s}
+.tv-bar.done>div{background:linear-gradient(90deg,#d97706,#fcd34d)}
+.tv-bar span{position:absolute;right:1.2vw;top:50%;transform:translateY(-50%);font-weight:900;font-size:1.6vw}
+.tv-stats{display:flex;gap:2vw;margin-top:1vw}
+.tv-stat{flex:1;background:#0c1528;border-radius:1vw;padding:1.2vw 1.4vw}
+.tv-stat .l{font-size:.95vw;color:var(--mut);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.tv-stat .v{font-size:2.6vw;font-weight:800;margin-top:.3vw}
+.tv-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4vw;margin-top:1.6vw}
+.tv-card{background:#101a2e;border:1px solid var(--line);border-radius:1.2vw;padding:1.4vw 1.6vw}
+.tv-card .l{font-size:1vw;color:var(--mut);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.tv-card .v{font-size:2.4vw;font-weight:800;margin-top:.4vw}
+.tv-card .tv-bar{height:1.2vw;margin:.9vw 0 .5vw}
+.tv-card .s{font-size:1vw;color:var(--mut)}
+.tv-rank{display:grid;grid-template-columns:1fr 1fr;gap:.7vw 2.4vw}
+.tv-ri{display:flex;align-items:center;gap:1.2vw;background:#101a2e;border:1px solid var(--line);border-radius:1vw;padding:.8vw 1.2vw}
+.tv-ri .pos{width:3vw;height:3vw;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:1.3vw;background:#1b2742;flex-shrink:0}
+.tv-ri .nm{font-size:1.5vw;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-ri .tm{font-size:.9vw;color:var(--mut)}
+.tv-ri .val{font-size:1.7vw;font-weight:800;text-align:right;white-space:nowrap}
+.tv-ri .mini{height:.5vw;background:#0a1222;border-radius:99px;margin-top:.4vw;overflow:hidden}
+.tv-ri .mini>div{height:100%;background:var(--pri)}
+.tv-teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(22vw,1fr));gap:1.6vw}
+.tv-team{background:#101a2e;border-radius:1.4vw;padding:2vw;border-top:.5vw solid var(--pri)}
+.tv-team .nm{font-size:2.2vw;font-weight:800}
+.tv-team .v{font-size:3.4vw;font-weight:900;margin-top:.6vw}
+.tv-prizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(26vw,1fr));gap:1.6vw}
+.tv-prize{background:linear-gradient(160deg,#1b1606,#101a2e 55%);border:1px solid #5c4410;border-radius:1.4vw;padding:1.6vw;display:flex;flex-direction:column}
+.tv-prize img{width:100%;height:11vw;object-fit:cover;border-radius:1vw;margin-bottom:1vw}
+.tv-prize .t{font-size:1.9vw;font-weight:800}
+.tv-prize .p{font-size:1.5vw;color:var(--gold);font-weight:700;margin:.4vw 0}
+.tv-prize .d{font-size:1vw;color:var(--mut)}
+.tv-prize .who{margin-top:1vw;font-size:1.2vw}
+.tv-prize .who div{display:flex;justify-content:space-between;padding:.4vw 0;border-bottom:1px solid #243152}
+.tv-feed .it{display:flex;align-items:center;gap:1.6vw;background:#101a2e;border:1px solid var(--line);border-radius:1vw;padding:1vw 1.6vw;margin-bottom:.8vw;font-size:1.6vw}
+.tv-feed .it .h{color:var(--mut);width:6vw}
+.tv-feed .it .n{flex:1;font-weight:700}
+.tv-feed .it .val{font-weight:900;color:var(--pri)}
+.tv-foot{display:flex;justify-content:space-between;align-items:center;padding:.8vw 2.6vw 1.4vw;font-size:1.1vw;color:var(--mut)}
+.tv-dots{display:flex;gap:.5vw}
+.tv-dots i{width:.7vw;height:.7vw;border-radius:50%;background:#243152}
+.tv-dots i.on{background:var(--pri)}
+.tv-start{position:fixed;inset:0;z-index:50;background:#070d18f2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vw;cursor:default}
+.tv-start .btn{font-size:1.6vw;padding:1.4vw 3vw;border-radius:1.2vw}
+.celeb{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;
+  background:radial-gradient(circle at 50% 45%,#065f46ee,#022c22f5 60%,#010b08fa);animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+.celeb.gold{background:radial-gradient(circle at 50% 45%,#92400eee,#451a03f5 60%,#140800fa)}
+.celeb.purple{background:radial-gradient(circle at 50% 45%,#6b21a8ee,#2e1065f5 60%,#0b0218fa)}
+@keyframes pop{from{opacity:0;transform:scale(1.15)}to{opacity:1;transform:none}}
+.celeb .k{font-size:3vw;font-weight:900;letter-spacing:.25em;color:#fde68a;text-shadow:0 0 2vw #fde68a88;animation:pulse 1s infinite alternate}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.06)}}
+.celeb .n{font-size:6.5vw;font-weight:900;letter-spacing:-.03em;margin-top:1.4vw;line-height:1.05}
+.celeb .v{font-size:7.5vw;font-weight:900;color:#6ee7b7;letter-spacing:-.03em;line-height:1.05;margin-top:.6vw}
+.celeb.gold .v{color:#fde68a}
+.celeb.purple .v{color:#e9d5ff;font-size:4.5vw}
+.celeb .s{font-size:2vw;color:#d1fae5;margin-top:1.2vw;font-weight:600}
+.celeb .f{font-size:1.5vw;color:#a7f3d0aa;margin-top:2.4vw}
+#confetti{position:fixed;inset:0;z-index:70;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="app"><div class="loader">Carregando…</div></div>
+<div id="modalRoot"></div>
+<canvas id="confetti"></canvas>
+<script>
+/* =========================================================
+   MetaCota — Gestão de metas e vendas para escritórios de consórcio
+   ========================================================= */
+const APP_NAME = 'MetaCota';
+const SUPER_EMAILS = ['agrosafra7@gmail.com', 'menezesapptec@gmail.com'];
+
+// >>> COLE AQUI A CONFIGURAÇÃO DO SEU PROJETO FIREBASE <<<
+const firebaseConfig = {
+  apiKey: "COLE_AQUI",
+  authDomain: "COLE_AQUI",
+  projectId: "COLE_AQUI",
+  storageBucket: "COLE_AQUI",
+  messagingSenderId: "COLE_AQUI",
+  appId: "COLE_AQUI"
+};
+
+const CONFIG_OK = !String(firebaseConfig.apiKey).startsWith('COLE');
+let auth, db;
+if (CONFIG_OK) {
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+}
+
+const DEFAULT_MODALIDADES = ['Imóvel', 'Veículo leve', 'Veículo pesado', 'Moto', 'Serviços', 'Agro'];
+const MOTIVOS_CANCEL = ['Desistência', 'Inadimplência', 'Erro de lançamento', 'Transferência', 'Outro'];
+const TEAM_COLORS = ['#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#10b981', '#ec4899', '#14b8a6', '#eab308', '#6366f1', '#f97316'];
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MES_C = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const PERIODOS = { diaria: 'Diária', semanal: 'Semanal', mensal: 'Mensal', anual: 'Anual', personalizada: 'Personalizada' };
+const TV_TELAS = { metas: 'Metas do escritório', ranking: 'Ranking de consultores', times: 'Ranking de times', premios: 'Premiações', ultimas: 'Últimas vendas' };
+
+/* ---------- Estado ---------- */
+const S = {
+  user: null, profile: null, role: null, oid: null, office: null, isSuper: false, suporte: false,
+  users: [], times: [], metas: [], premios: [], vendas: [], logs: [],
+  umap: {}, tmap: {}, ano: new Date().getFullYear(), tab: 'inicio', unsubs: [], vendasInit: false,
+  f: { vMes: String(new Date().getMonth() + 1), vCons: '', vStatus: '', vMod: '', rPer: 'mes', rMod: '', cAno: null },
+  tv: false, offices: [], allUsers: []
+};
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const brl = n => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const brl2 = n => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function compact(n) {
+  n = Number(n) || 0; const a = Math.abs(n);
+  if (a >= 1e9) return 'R$ ' + (n / 1e9).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' bi';
+  if (a >= 1e6) return 'R$ ' + (n / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' mi';
+  if (a >= 1e3) return 'R$ ' + (n / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
+  return brl(n);
+}
+const fmtMeta = (v, tipo) => tipo === 'cotas' ? `${Math.round(v).toLocaleString('pt-BR')} cota${Math.round(v) === 1 ? '' : 's'}` : brl(v);
+const fmtMetaC = (v, tipo) => tipo === 'cotas' ? `${Math.round(v).toLocaleString('pt-BR')} cotas` : compact(v);
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const todayISO = () => iso(new Date());
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const brDate = s => s ? s.split('-').reverse().join('/') : '';
+const pct = (a, b) => b > 0 ? a / b * 100 : 0;
+const pctTxt = p => Math.floor(p).toLocaleString('pt-BR') + '%';
+function maskMoney(el) {
+  el.addEventListener('input', () => {
+    const d = el.value.replace(/\D/g, '');
+    const n = parseInt(d || '0', 10) / 100;
+    el.value = n ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+  });
+}
+const parseMoney = s => parseInt(String(s || '').replace(/\D/g, '') || '0', 10) / 100;
+const moneyVal = n => n ? Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+
+function toast(msg, type = 'ok', ms = 2600) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+function openModal(html, onMount) {
+  const root = $('#modalRoot');
+  root.innerHTML = `<div class="modal-bg"><div class="modal">${html}</div></div>`;
+  root.querySelector('.modal-bg').addEventListener('mousedown', e => { if (e.target.classList.contains('modal-bg')) closeModal(); });
+  root.querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
+  onMount && onMount(root.querySelector('.modal'));
+}
+const closeModal = () => $('#modalRoot').innerHTML = '';
+function authErr(e) {
+  const m = {
+    'auth/invalid-credential': 'E-mail ou senha incorretos.', 'auth/wrong-password': 'E-mail ou senha incorretos.',
+    'auth/user-not-found': 'Usuário não encontrado.', 'auth/email-already-in-use': 'Este e-mail já está cadastrado.',
+    'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.', 'auth/invalid-email': 'E-mail inválido.',
+    'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.', 'permission-denied': 'Sem permissão para esta ação.'
+  };
+  return m[e.code] || e.message || 'Erro inesperado.';
+}
+
+/* ---------- Períodos ---------- */
+function periodRange(periodo, meta, ref = new Date()) {
+  const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  if (periodo === 'diaria') return [iso(d), iso(d)];
+  if (periodo === 'semanal') { const wd = (d.getDay() + 6) % 7; const ini = addDays(d, -wd); return [iso(ini), iso(addDays(ini, 6))]; }
+  if (periodo === 'mensal') return [iso(new Date(d.getFullYear(), d.getMonth(), 1)), iso(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
+  if (periodo === 'anual') return [`${d.getFullYear()}-01-01`, `${d.getFullYear()}-12-31`];
+  return [meta?.inicio || iso(d), meta?.fim || iso(d)];
+}
+function isUtil(d) { const w = d.getDay(); return (w >= 1 && w <= 5) || (w === 6 && S.office?.sabadoUtil); }
+function diasUteisRestantes(fimISO) {
+  let d = parseISO(todayISO()); const f = parseISO(fimISO); let n = 0;
+  while (d <= f) { if (isUtil(d)) n++; d = addDays(d, 1); }
+  return n;
+}
+function periodoLabel(m) {
+  const [ini, fim] = periodRange(m.periodo, m); const now = new Date();
+  if (m.periodo === 'diaria') return 'Hoje';
+  if (m.periodo === 'semanal') return `Semana ${brDate(ini).slice(0, 5)} a ${brDate(fim).slice(0, 5)}`;
+  if (m.periodo === 'mensal') return MESES[now.getMonth()];
+  if (m.periodo === 'anual') return String(now.getFullYear());
+  return `${brDate(ini)} a ${brDate(fim)}`;
+}
+
+/* ---------- Cálculos ---------- */
+const ativas = () => S.vendas.filter(v => v.status !== 'cancelada');
+const timeDe = v => (S.umap[v.consultorId] && S.umap[v.consultorId].timeId) || v.timeId || '';
+const somaV = (list, tipo) => tipo === 'cotas' ? list.length : list.reduce((a, v) => a + (Number(v.valor) || 0), 0);
+function vendasEntre(ini, fim, mod) {
+  return S.vendas.filter(v => v.status !== 'cancelada' && v.data >= ini && v.data <= fim && (!mod || v.modalidade === mod));
+}
+const consultores = (incluirInativos = false) => S.users.filter(u => u.role === 'consultor' && (incluirInativos || u.ativo !== false));
+
+function metaProgress(m, uid) {
+  const [ini, fim] = periodRange(m.periodo, m);
+  let l = vendasEntre(ini, fim, m.modalidade);
+  if (m.escopo === 'time') l = l.filter(v => timeDe(v) === m.alvoId);
+  if (m.escopo === 'consultor') l = l.filter(v => v.consultorId === m.alvoId);
+  if (m.escopo === 'cada') l = l.filter(v => v.consultorId === uid);
+  const real = somaV(l, m.tipo);
+  const alvo = Number(m.alvo) || 0;
+  const falta = Math.max(0, alvo - real);
+  const hoje = todayISO();
+  const dias = hoje > fim ? 0 : diasUteisRestantes(fim);
+  const ritmo = m.periodo === 'diaria' ? falta : (dias > 0 ? falta / dias : falta);
+  return { ini, fim, real, alvo, falta, p: pct(real, alvo), dias, ritmo, encerrada: hoje > fim, futura: hoje < ini };
+}
+function metaAlvoNome(m) {
+  if (m.escopo === 'escritorio') return 'Escritório';
+  if (m.escopo === 'time') return 'Time ' + (S.tmap[m.alvoId]?.nome || '—');
+  if (m.escopo === 'consultor') return S.umap[m.alvoId]?.nome || '—';
+  return 'Cada consultor';
+}
+const metasAtivas = () => S.metas.filter(m => m.ativa !== false && !metaProgress(m).futura && !metaProgress(m).encerrada);
+const metaOrdem = { diaria: 1, semanal: 2, mensal: 3, personalizada: 4, anual: 5 };
+
+function ranking(ini, fim, mod) {
+  const l = vendasEntre(ini, fim, mod); const acc = {};
+  consultores().forEach(u => acc[u.id] = { id: u.id, nome: u.nome, timeId: u.timeId || '', valor: 0, cotas: 0 });
+  l.forEach(v => {
+    if (!acc[v.consultorId]) acc[v.consultorId] = { id: v.consultorId, nome: v.consultorNome || '—', timeId: timeDe(v), valor: 0, cotas: 0 };
+    acc[v.consultorId].valor += Number(v.valor) || 0; acc[v.consultorId].cotas++;
+  });
+  return Object.values(acc).sort((a, b) => b.valor - a.valor || b.cotas - a.cotas);
+}
+function rankingTimes(ini, fim, mod) {
+  const l = vendasEntre(ini, fim, mod); const acc = {};
+  S.times.forEach(t => acc[t.id] = { id: t.id, nome: t.nome, cor: t.cor, valor: 0, cotas: 0, membros: consultores().filter(u => u.timeId === t.id).length });
+  l.forEach(v => { const t = timeDe(v); if (acc[t]) { acc[t].valor += Number(v.valor) || 0; acc[t].cotas++; } });
+  return Object.values(acc).sort((a, b) => b.valor - a.valor);
+}
+function rangeDoFiltro(per) {
+  if (per === 'hoje') return periodRange('diaria');
+  if (per === 'semana') return periodRange('semanal');
+  if (per === 'ano') return [`${S.ano}-01-01`, `${S.ano}-12-31`];
+  return periodRange('mensal');
+}
+// Meta individual do consultor (mensal) para exibir % no ranking
+function metaMensalDe(uid) {
+  const m = S.metas.find(m => m.ativa !== false && m.periodo === 'mensal' && !m.modalidade && m.tipo !== 'cotas' && (m.escopo === 'consultor' && m.alvoId === uid))
+    || S.metas.find(m => m.ativa !== false && m.periodo === 'mensal' && !m.modalidade && m.tipo !== 'cotas' && m.escopo === 'cada');
+  return m ? Number(m.alvo) : 0;
+}
+
+function premioCalc(p) {
+  const hoje = todayISO();
+  const st = hoje < p.inicio ? 'futuro' : hoje > p.fim ? 'encerrado' : 'ativo';
+  let l = S.vendas.filter(v => v.status !== 'cancelada' && v.data >= p.inicio && v.data <= p.fim && (!p.modalidade || v.modalidade === p.modalidade));
+  const isTime = p.competidor === 'time';
+  if (!isTime && p.timeId) l = l.filter(v => timeDe(v) === p.timeId);
+  l.sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : (a.ts || 0) - (b.ts || 0));
+  const acc = {}, hit = {}; let ordem = 0; const alvo = Number(p.alvo) || 0;
+  l.forEach(v => {
+    const k = isTime ? timeDe(v) : v.consultorId; if (!k) return;
+    acc[k] = (acc[k] || 0) + (p.tipo === 'cotas' ? 1 : Number(v.valor) || 0);
+    if (alvo && hit[k] === undefined && acc[k] >= alvo) hit[k] = ordem++;
+  });
+  const nomeDe = k => isTime ? (S.tmap[k]?.nome || '—') : (S.umap[k]?.nome || l.find(v => v.consultorId === k)?.consultorNome || '—');
+  // participantes com zero
+  if (isTime) S.times.forEach(t => { if (acc[t.id] === undefined) acc[t.id] = 0; });
+  else consultores().filter(u => !p.timeId || u.timeId === p.timeId).forEach(u => { if (acc[u.id] === undefined) acc[u.id] = 0; });
+  const rk = Object.entries(acc).map(([k, val]) => ({ k, val, nome: nomeDe(k) })).sort((a, b) => b.val - a.val);
+  let ganhadores = [];
+  const byHit = Object.keys(hit).sort((a, b) => hit[a] - hit[b]).map(k => ({ k, nome: nomeDe(k), val: acc[k] }));
+  if (p.regra === 'meta') ganhadores = byHit;
+  else if (p.regra === 'primeiro') ganhadores = byHit.slice(0, 1);
+  else if (p.regra === 'maior' && st === 'encerrado' && rk[0]?.val > 0) ganhadores = rk.slice(0, 1);
+  else if (p.regra === 'top3' && st === 'encerrado') ganhadores = rk.filter(r => r.val > 0).slice(0, 3);
+  return { st, rk, ganhadores, alvo };
+}
+function regraTxt(p) {
+  const alvo = fmtMeta(p.alvo, p.tipo);
+  const quem = p.competidor === 'time' ? 'o time' : 'o consultor';
+  if (p.regra === 'meta') return `Todos que atingirem ${alvo}`;
+  if (p.regra === 'primeiro') return `Primeiro a atingir ${alvo}`;
+  if (p.regra === 'maior') return `Maior venda acumulada — ${quem} que mais vender`;
+  return p.competidor === 'time' ? 'Top 3 times' : 'Top 3 consultores';
+}
+
+/* ---------- Log de alterações ---------- */
+function logAcao(acao, resumo, vendaId = '') {
+  if (!S.oid) return;
+  db.collection('offices').doc(S.oid).collection('logs').add({
+    acao, resumo, vendaId, porId: S.user.uid, porNome: S.profile?.nome || S.user.email, ts: Date.now()
+  }).catch(() => {});
+}
+const vendaResumo = v => `${brl(v.valor)} · ${v.modalidade} · ${v.consultorNome || ''}${v.proposta ? ' · Prop. ' + v.proposta : ''}${v.grupo ? ' · G ' + v.grupo : ''}${v.cota ? ' · C ' + v.cota : ''}`;
+
+/* ---------- Criar usuário sem deslogar o admin ---------- */
+async function criarUsuarioAuth(email, senha) {
+  const sec = firebase.apps.find(a => a.name === 'sec') || firebase.initializeApp(firebaseConfig, 'sec');
+  const cred = await sec.auth().createUserWithEmailAndPassword(email, senha);
+  const uid = cred.user.uid;
+  await sec.auth().signOut();
+  return uid;
+}
+
+/* ---------- Auth / boot ---------- */
+function unsubAll() { S.unsubs.forEach(u => { try { u(); } catch (e) {} }); S.unsubs = []; }
+
+function boot() {
+  if (!CONFIG_OK) {
+    $('#app').innerHTML = `<div class="auth-wrap"><div class="auth-card"><div class="logo"><i>M</i>${APP_NAME}</div>
+      <p class="mt mut">Configure o Firebase: cole a configuração do seu projeto na constante <b>firebaseConfig</b> dentro do index.html.</p></div></div>`;
+    return;
+  }
+  S.tv = new URLSearchParams(location.search).has('tv');
+  auth.onAuthStateChanged(async user => {
+    unsubAll(); S.user = user; S.vendasInit = false;
+    if (!user) return renderLogin();
+    S.isSuper = SUPER_EMAILS.includes((user.email || '').toLowerCase());
+    if (S.isSuper && !S.suporte) {
+      S.role = 'super'; S.profile = { nome: 'Master' };
+      return loadSuper();
+    }
+    if (S.isSuper && S.suporte) return;
+    try {
+      const snap = await db.collection('users').doc(user.uid).get();
+      if (!snap.exists) return renderBlocked('Seu usuário ainda não foi vinculado a um escritório. Fale com o administrador.');
+      const p = { id: snap.id, ...snap.data() };
+      if (p.ativo === false) return renderBlocked('Seu acesso foi desativado pelo administrador do escritório.');
+      S.profile = p; S.role = p.role; S.oid = p.officeId;
+      const off = await db.collection('offices').doc(S.oid).get();
+      if (!off.exists) return renderBlocked('Escritório não encontrado.');
+      if (off.data().ativo === false) return renderBlocked('O acesso deste escritório está suspenso. Fale com o responsável pelo escritório.');
+      if (S.role === 'tv') S.tv = true;
+      if (S.tv && !['admin', 'tv'].includes(S.role)) S.tv = false;
+      startOffice();
+    } catch (e) { renderBlocked('Erro ao carregar: ' + authErr(e)); }
+  });
+}
+
+function startOffice() {
+  const o = db.collection('offices').doc(S.oid);
+  let pend = 6; const ready = () => { if (--pend <= 0) { render(); } };
+  const once = fn => { let d = false; return snap => { fn(snap); if (!d) { d = true; ready(); } else scheduleRender(); }; };
+  S.unsubs.push(o.onSnapshot(once(s => { S.office = { id: s.id, ...s.data() }; })));
+  S.unsubs.push(db.collection('users').where('officeId', '==', S.oid).onSnapshot(once(s => {
+    S.users = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    S.umap = Object.fromEntries(S.users.map(u => [u.id, u]));
+  })));
+  S.unsubs.push(o.collection('times').onSnapshot(once(s => {
+    S.times = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    S.tmap = Object.fromEntries(S.times.map(t => [t.id, t]));
+  })));
+  S.unsubs.push(o.collection('metas').onSnapshot(once(s => { S.metas = s.docs.map(d => ({ id: d.id, ...d.data() })); })));
+  S.unsubs.push(o.collection('premios').onSnapshot(once(s => { S.premios = s.docs.map(d => ({ id: d.id, ...d.data() })); })));
+  subVendas(ready);
+}
+let vendasUnsub = null;
+function subVendas(ready) {
+  if (vendasUnsub) { vendasUnsub(); S.unsubs = S.unsubs.filter(u => u !== vendasUnsub); }
+  S.vendasInit = false; let first = true;
+  vendasUnsub = db.collection('offices').doc(S.oid).collection('vendas')
+    .where('data', '>=', `${S.ano}-01-01`).where('data', '<=', `${S.ano}-12-31`)
+    .onSnapshot(s => {
+      S.vendas = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!first) s.docChanges().forEach(ch => { if (ch.type === 'added') onNovaVenda({ id: ch.doc.id, ...ch.doc.data() }); });
+      if (first) { first = false; S.vendasInit = true; ready ? ready() : render(); } else scheduleRender();
+    }, e => toast('Erro ao carregar vendas: ' + authErr(e), 'err'));
+  S.unsubs.push(vendasUnsub);
+}
+function onNovaVenda(v) {
+  if (v.status === 'cancelada' || !v.ts || Date.now() - v.ts > 5 * 60 * 1000) return;
+  if (S.tv) tvEnqueueVenda(v);
+  else if (v.consultorId !== S.user.uid) toast(`🎉 ${v.consultorNome} vendeu ${brl(v.valor)} em ${v.modalidade}!`, 'ok', 4000);
+}
+let rq = false;
+function scheduleRender() { if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; render(); }); }
+function render() {
+  if (!S.user) return;
+  if (S.role === 'super' && !S.suporte) return renderSuper();
+  if (!S.office) return;
+  if (S.tv) return renderTV();
+  renderApp();
+}
+
+function renderLogin() {
+  S.suporte = false;
+  $('#app').innerHTML = `<div class="auth-wrap"><div class="auth-card">
+    <div class="logo"><i>M</i>${APP_NAME}</div>
+    <p class="mut sm mt">Metas, vendas e ranking do seu escritório de consórcio em tempo real.</p>
+    <form id="lf" class="mt">
+      <label>E-mail</label><input id="le" type="email" autocomplete="username" required>
+      <label>Senha</label><input id="lp" type="password" autocomplete="current-password" required>
+      <button class="btn pri big mt" style="width:100%">Entrar</button>
+    </form>
+    <p class="sm mt" style="text-align:center"><a href="#" id="lr">Esqueci minha senha</a></p>
+  </div></div>`;
+  $('#lf').onsubmit = async e => {
+    e.preventDefault(); const b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Entrando…';
+    try { await auth.signInWithEmailAndPassword($('#le').value.trim(), $('#lp').value); }
+    catch (er) { toast(authErr(er), 'err'); b.disabled = false; b.textContent = 'Entrar'; }
+  };
+  $('#lr').onclick = async e => {
+    e.preventDefault(); const em = $('#le').value.trim();
+    if (!em) return toast('Digite seu e-mail no campo acima.', 'err');
+    try { await auth.sendPasswordResetEmail(em); toast('Enviamos um link de redefinição para ' + em); } catch (er) { toast(authErr(er), 'err'); }
+  };
+}
+function renderBlocked(msg) {
+  $('#app').innerHTML = `<div class="auth-wrap"><div class="auth-card"><div class="logo"><i>M</i>${APP_NAME}</div>
+    <p class="mt">${esc(msg)}</p><button class="btn mt" onclick="auth.signOut()">Sair</button></div></div>`;
+}
+</script>
+<script>
+/* =========================================================
+   APP (Admin do escritório e Consultor)
+   ========================================================= */
+function tabsFor() {
+  if (S.role === 'admin') return [['inicio', 'Painel'], ['vendas', 'Vendas'], ['ranking', 'Ranking'], ['metas', 'Metas'], ['premios', 'Premiações'], ['cancel', 'Cancelamentos'], ['equipe', 'Equipe'], ['hist', 'Histórico'], ['config', 'Configurações']];
+  return [['inicio', 'Início'], ['minhas', 'Minhas vendas'], ['ranking', 'Ranking'], ['premios', 'Premiações'], ['conta', 'Minha conta']];
+}
+function renderApp() {
+  const tabs = tabsFor(); if (!tabs.find(t => t[0] === S.tab)) S.tab = 'inicio';
+  const y = window.scrollY;
+  $('#app').innerHTML = `
+  ${S.suporte ? `<div class="support">Modo suporte — ${esc(S.office.nome)} <button id="bSup">Voltar ao painel master</button></div>` : ''}
+  <header class="top"><div class="top-in">
+    <div class="logo"><i>M</i><span>${APP_NAME}</span></div>
+    <div class="office">${esc(S.office.nome || '')}</div>
+    <div class="grow"></div>
+    ${S.role === 'admin' ? `<button class="btn sm" id="bTv">📺 Painel TV</button>` : ''}
+    <button class="btn sm ghost" id="bOut">Sair</button>
+  </div>
+  <nav class="tabs">${tabs.map(t => `<button class="tab ${S.tab === t[0] ? 'on' : ''}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</nav>
+  </header>
+  <main id="view"></main>
+  ${S.role === 'admin' || S.role === 'consultor' ? `<button class="btn pri big fab" id="fab">+ Lançar venda</button>` : ''}`;
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; window.scrollTo(0, 0); render(); });
+  $('#bOut').onclick = () => { S.suporte = false; auth.signOut(); };
+  if ($('#bSup')) $('#bSup').onclick = sairSuporte;
+  if ($('#bTv')) $('#bTv').onclick = () => { if (S.suporte) { S.tv = true; render(); } else window.open(location.pathname + '?tv=1', '_blank'); };
+  if ($('#fab')) $('#fab').onclick = () => openVendaForm();
+  const el = $('#view');
+  const V = {
+    inicio: S.role === 'admin' ? vPainel : vInicioCons, vendas: vVendas, minhas: vVendas, ranking: vRanking,
+    metas: vMetas, premios: vPremios, cancel: vCancel, equipe: vEquipe, hist: vHist, config: vConfig, conta: vConta
+  };
+  (V[S.tab] || vPainel)(el);
+  window.scrollTo(0, y);
+}
+function anoSel() {
+  const a = new Date().getFullYear(); const opts = [];
+  for (let i = a + 1; i >= a - 4; i--) opts.push(i);
+  return `<select id="selAno" style="width:auto">${opts.map(o => `<option ${o === S.ano ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+}
+function bindAno() { const s = $('#selAno'); if (s) s.onchange = () => { S.ano = +s.value; subVendas(); }; }
+
+/* ---------- Componentes ---------- */
+function metaCard(m, uid, extraBtns = '') {
+  const r = metaProgress(m, uid); const done = r.p >= 100;
+  return `<div class="card">
+    <div class="row between" style="align-items:flex-start">
+      <div><div class="b">${esc(m.nome || 'Meta ' + PERIODOS[m.periodo].toLowerCase())}</div>
+      <div class="xs mut">${PERIODOS[m.periodo]} · ${esc(periodoLabel(m))} · ${esc(metaAlvoNome(m))}${m.modalidade ? ' · ' + esc(m.modalidade) : ''}</div></div>
+      ${done ? '<span class="badge y">🏆 Batida</span>' : `<span class="badge ${r.encerrada ? 'r' : ''}">${r.encerrada ? 'Encerrada' : pctTxt(r.p)}</span>`}
+    </div>
+    <div class="mt"><span class="b" style="font-size:1.25rem">${fmtMeta(r.real, m.tipo)}</span> <span class="mut sm">de ${fmtMeta(r.alvo, m.tipo)}</span></div>
+    <div class="bar ${done ? 'done' : ''}"><div style="width:${Math.min(100, r.p)}%"></div></div>
+    <div class="row between mt sm">${done
+      ? `<span class="gold b">Superou em ${fmtMeta(r.real - r.alvo, m.tipo)}</span>`
+      : `<span>Faltam <b>${fmtMeta(r.falta, m.tipo)}</b></span>${m.periodo !== 'diaria' && r.dias ? `<span class="mut xs">${fmtMeta(r.ritmo, m.tipo)} por dia útil · ${r.dias === 1 ? '1 dia útil' : r.dias + ' dias úteis'}</span>` : ''}`}</div>
+    ${extraBtns}
+  </div>`;
+}
+function metaCadaCard(m, extraBtns = '') {
+  const cs = consultores(); const res = cs.map(u => ({ u, r: metaProgress(m, u.id) })).sort((a, b) => b.r.p - a.r.p);
+  const bateram = res.filter(x => x.r.p >= 100).length;
+  return `<div class="card">
+    <div class="row between" style="align-items:flex-start">
+      <div><div class="b">${esc(m.nome || 'Meta individual')}</div>
+      <div class="xs mut">${PERIODOS[m.periodo]} · ${esc(periodoLabel(m))} · Cada consultor: ${fmtMeta(m.alvo, m.tipo)}${m.modalidade ? ' · ' + esc(m.modalidade) : ''}</div></div>
+      <span class="badge ${bateram ? 'y' : ''}">${bateram}/${cs.length} bateram</span>
+    </div>
+    <div class="mt">${res.slice(0, 8).map(x => `<div class="hbar"><span class="n">${esc(x.u.nome)}</span><span class="t"><div style="width:${Math.min(100, x.r.p)}%;${x.r.p >= 100 ? 'background:var(--gold)' : ''}"></div></span><span class="v">${pctTxt(x.r.p)}</span></div>`).join('')}
+    ${res.length > 8 ? `<div class="xs mut">+ ${res.length - 8} consultores</div>` : ''}</div>
+    ${extraBtns}
+  </div>`;
+}
+function kpi(l, v, s = '') { return `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="xs mut mt" style="margin-top:4px">${s}</div>` : ''}</div>`; }
+function hbars(items, fmt = compact) {
+  const max = Math.max(1, ...items.map(i => i.v));
+  if (!items.length) return '<div class="empty sm">Sem dados</div>';
+  return items.map(i => `<div class="hbar"><span class="n">${i.cor ? `<span class="dot" style="background:${i.cor}"></span>` : ''}${esc(i.n)}</span><span class="t"><div style="width:${i.v / max * 100}%;${i.cor ? 'background:' + i.cor : ''}"></div></span><span class="v">${fmt(i.v)}</span></div>`).join('');
+}
+const timeDot = tid => S.tmap[tid] ? `<span class="dot" style="background:${S.tmap[tid].cor}"></span>` : '';
+
+/* ---------- Painel do admin ---------- */
+function vPainel(el) {
+  const [mi, mf] = periodRange('mensal'); const [hi] = periodRange('diaria');
+  const hoje = vendasEntre(hi, hi), mes = vendasEntre(mi, mf), ano = ativas();
+  const canc = S.vendas.filter(v => v.status === 'cancelada');
+  const cancMes = canc.filter(v => (v.canceladaEm || '') >= mi && (v.canceladaEm || '') <= mf);
+  const mEsc = metasAtivas().filter(m => m.escopo === 'escritorio').sort((a, b) => metaOrdem[a.periodo] - metaOrdem[b.periodo]);
+  const metaMensalEsc = S.metas.find(m => m.ativa !== false && m.escopo === 'escritorio' && m.periodo === 'mensal' && !m.modalidade && m.tipo !== 'cotas');
+  const cols = MES_C.map((n, i) => {
+    const ini = `${S.ano}-${pad(i + 1)}-01`, fim = iso(new Date(S.ano, i + 1, 0));
+    return { n, v: somaV(vendasEntre(ini, fim)), c: somaV(canc.filter(v => (v.canceladaEm || '') >= ini && (v.canceladaEm || '') <= fim)), m: metaMensalEsc ? Number(metaMensalEsc.alvo) : 0 };
+  });
+  const maxC = Math.max(1, ...cols.map(c => Math.max(c.v, c.m, c.c)));
+  const porMod = {}; mes.forEach(v => porMod[v.modalidade] = (porMod[v.modalidade] || 0) + Number(v.valor));
+  const rt = rankingTimes(mi, mf);
+  el.innerHTML = `
+  <div class="row between mb"><h1>Painel</h1><div class="row">${anoSel()}</div></div>
+  <div class="grid g4">
+    ${kpi('Vendido hoje', compact(somaV(hoje)), `${hoje.length} cota${hoje.length === 1 ? '' : 's'}`)}
+    ${kpi('Vendido no mês', compact(somaV(mes)), `${mes.length} cotas · ${MESES[new Date().getMonth()]}`)}
+    ${kpi('Vendido no ano', compact(somaV(ano)), `${ano.length} cotas em ${S.ano}`)}
+    ${kpi('Cancelado no mês', `<span class="red">${compact(somaV(cancMes))}</span>`, `${cancMes.length} cotas · taxa anual ${pctTxt(pct(somaV(canc), somaV(S.vendas)))}`)}
+  </div>
+  <h2 class="mt2">Metas do escritório</h2>
+  ${mEsc.length ? `<div class="grid g2">${mEsc.map(m => metaCard(m)).join('')}</div>` : `<div class="card empty">Nenhuma meta do escritório ativa. <a href="#" id="goMetas">Cadastrar metas</a></div>`}
+  <div class="grid g2 mt2">
+    <div class="card"><h2>Vendas mês a mês — ${S.ano}</h2>
+      <div class="vchart">${cols.map(c => `<div class="c"><div class="cols">
+        ${c.m ? `<div class="col m" style="height:${c.m / maxC * 100}%" title="Meta ${brl(c.m)}"></div>` : ''}
+        <div class="col" style="height:${c.v / maxC * 100}%" title="Vendido ${brl(c.v)}"></div>
+        ${c.c ? `<div class="col cx" style="height:${c.c / maxC * 100}%;width:18%" title="Cancelado ${brl(c.c)}"></div>` : ''}
+      </div><span class="lb">${c.n}</span></div>`).join('')}</div>
+      <div class="row xs mut mt"><span><span class="dot" style="background:var(--pri)"></span>Vendido</span>${metaMensalEsc ? '<span><span class="dot" style="background:#334155"></span>Meta mensal</span>' : ''}<span><span class="dot" style="background:var(--red)"></span>Cancelado</span></div>
+    </div>
+    <div class="card"><h2>Por modalidade — ${MESES[new Date().getMonth()]}</h2>
+      ${hbars(Object.entries(porMod).map(([n, v]) => ({ n, v })).sort((a, b) => b.v - a.v))}
+      ${rt.length ? `<h2 class="mt2">Times — ${MESES[new Date().getMonth()]}</h2>${hbars(rt.map(t => ({ n: t.nome, v: t.valor, cor: t.cor })))}` : ''}
+    </div>
+  </div>
+  <div class="card mt2"><div class="row between"><h2>Top consultores do mês</h2><a href="#" id="goRank" class="sm">Ver ranking completo</a></div>
+    ${rankList(ranking(mi, mf).slice(0, 5), 'mes')}</div>`;
+  bindAno();
+  if ($('#goMetas')) $('#goMetas').onclick = e => { e.preventDefault(); S.tab = 'metas'; render(); };
+  $('#goRank').onclick = e => { e.preventDefault(); S.tab = 'ranking'; render(); };
+}
+
+/* ---------- Início do consultor ---------- */
+function vInicioCons(el) {
+  const me = S.user.uid; const [mi, mf] = periodRange('mensal'); const [hi] = periodRange('diaria');
+  const minhasMes = vendasEntre(mi, mf).filter(v => v.consultorId === me);
+  const minhasHoje = vendasEntre(hi, hi).filter(v => v.consultorId === me);
+  const rk = ranking(mi, mf); const pos = rk.findIndex(r => r.id === me) + 1;
+  const ms = metasAtivas();
+  const pessoais = ms.filter(m => (m.escopo === 'consultor' && m.alvoId === me) || m.escopo === 'cada').sort((a, b) => metaOrdem[a.periodo] - metaOrdem[b.periodo]);
+  const doTime = ms.filter(m => m.escopo === 'time' && m.alvoId === S.profile.timeId).sort((a, b) => metaOrdem[a.periodo] - metaOrdem[b.periodo]);
+  const doEsc = ms.filter(m => m.escopo === 'escritorio').sort((a, b) => metaOrdem[a.periodo] - metaOrdem[b.periodo]);
+  const prem = S.premios.filter(p => premioCalc(p).st === 'ativo');
+  el.innerHTML = `
+  <h1>Olá, ${esc((S.profile.nome || '').split(' ')[0])} 👋</h1>
+  <p class="mut sm">${S.tmap[S.profile.timeId] ? timeDot(S.profile.timeId) + 'Time ' + esc(S.tmap[S.profile.timeId].nome) + ' · ' : ''}${MESES[new Date().getMonth()]} de ${new Date().getFullYear()}</p>
+  <button class="btn pri big mt" id="bigLanc" style="width:100%">+ Lançar nova venda</button>
+  <div class="grid g4 mt">
+    ${kpi('Hoje', compact(somaV(minhasHoje)), `${minhasHoje.length} cotas`)}
+    ${kpi('No mês', compact(somaV(minhasMes)), `${minhasMes.length} cotas`)}
+    ${kpi('Posição no mês', pos ? pos + 'º' : '—', `de ${rk.length} consultores`)}
+  </div>
+  <h2 class="mt2">Minhas metas</h2>
+  ${pessoais.length ? `<div class="grid g2">${pessoais.map(m => metaCard(m, me)).join('')}</div>` : '<div class="card empty sm">Nenhuma meta individual cadastrada.</div>'}
+  ${doTime.length ? `<h2 class="mt2">Metas do meu time</h2><div class="grid g2">${doTime.map(m => metaCard(m)).join('')}</div>` : ''}
+  ${doEsc.length ? `<h2 class="mt2">Metas do escritório</h2><div class="grid g2">${doEsc.map(m => metaCard(m)).join('')}</div>` : ''}
+  ${prem.length ? `<h2 class="mt2">Premiações valendo agora</h2><div class="grid g2">${prem.map(p => premioCard(p)).join('')}</div>` : ''}`;
+  $('#bigLanc').onclick = () => openVendaForm();
+}
+
+/* ---------- Vendas ---------- */
+function vVendas(el) {
+  const isAdm = S.role === 'admin'; const f = S.f;
+  let l = S.vendas.slice();
+  if (!isAdm) l = l.filter(v => v.consultorId === S.user.uid);
+  if (f.vMes) l = l.filter(v => +v.data.slice(5, 7) === +f.vMes);
+  if (isAdm && f.vCons) l = l.filter(v => v.consultorId === f.vCons);
+  if (f.vStatus) l = l.filter(v => (v.status || 'ativa') === f.vStatus);
+  if (f.vMod) l = l.filter(v => v.modalidade === f.vMod);
+  l.sort((a, b) => a.data < b.data ? 1 : a.data > b.data ? -1 : (b.ts || 0) - (a.ts || 0));
+  const at = l.filter(v => v.status !== 'cancelada'), cx = l.filter(v => v.status === 'cancelada');
+  const mods = S.office.modalidades || DEFAULT_MODALIDADES;
+  el.innerHTML = `
+  <div class="row between mb"><h1>${isAdm ? 'Vendas' : 'Minhas vendas'}</h1>${isAdm ? anoSel() : ''}</div>
+  <div class="card"><div class="grid g4">
+    <div><label style="margin-top:0">Mês</label><select id="fMes"><option value="">Ano todo</option>${MESES.map((m, i) => `<option value="${i + 1}" ${+f.vMes === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+    ${isAdm ? `<div><label style="margin-top:0">Consultor</label><select id="fCons"><option value="">Todos</option>${S.users.filter(u => u.role !== 'tv').map(u => `<option value="${u.id}" ${f.vCons === u.id ? 'selected' : ''}>${esc(u.nome)}</option>`).join('')}</select></div>` : ''}
+    <div><label style="margin-top:0">Status</label><select id="fSt"><option value="">Todos</option><option value="ativa" ${f.vStatus === 'ativa' ? 'selected' : ''}>Ativas</option><option value="cancelada" ${f.vStatus === 'cancelada' ? 'selected' : ''}>Canceladas</option></select></div>
+    <div><label style="margin-top:0">Modalidade</label><select id="fMod"><option value="">Todas</option>${mods.map(m => `<option ${f.vMod === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></div>
+  </div></div>
+  <div class="grid g4 mt">
+    ${kpi('Vendas ativas', compact(somaV(at)), `${at.length} cotas`)}
+    ${kpi('Canceladas', `<span class="red">${compact(somaV(cx))}</span>`, `${cx.length} cotas`)}
+  </div>
+  <div class="card mt tblw">${l.length ? `<table class="tbl"><thead><tr>
+    <th>Data</th>${isAdm ? '<th>Consultor</th>' : ''}<th>Modalidade</th><th>Valor</th><th>Proposta / Grupo / Cota</th><th>Status</th><th></th></tr></thead><tbody>
+    ${l.map(v => `<tr class="${v.status === 'cancelada' ? 'canc' : ''}">
+      <td>${brDate(v.data)}</td>
+      ${isAdm ? `<td>${timeDot(timeDe(v))}${esc(v.consultorNome)}</td>` : ''}
+      <td>${esc(v.modalidade)}${v.administradora ? `<div class="xs mut">${esc(v.administradora)}</div>` : ''}</td>
+      <td class="b">${brl(v.valor)}</td>
+      <td class="sm">${[v.proposta && 'P ' + esc(v.proposta), v.grupo && 'G ' + esc(v.grupo), v.cota && 'C ' + esc(v.cota)].filter(Boolean).join(' · ') || '<span class="mut">—</span>'}</td>
+      <td class="nostrike">${v.status === 'cancelada' ? `<span class="badge r">Cancelada</span><div class="xs mut">${brDate(v.canceladaEm)} · ${esc(v.motivoCancel || '')}</div>` : '<span class="badge g">Ativa</span>'}</td>
+      <td class="nostrike" style="white-space:nowrap">
+        ${v.status !== 'cancelada' ? `<button class="btn sm" data-ed="${v.id}">Editar</button> <button class="btn sm red" data-cx="${v.id}">Cancelar</button>` : `<button class="btn sm" data-re="${v.id}">Reativar</button>`}
+        ${isAdm ? ` <button class="btn sm ghost" data-del="${v.id}" title="Excluir">🗑</button>` : ''}
+      </td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">Nenhuma venda encontrada para os filtros.</div>'}</div>`;
+  bindAno();
+  $('#fMes').onchange = e => { f.vMes = e.target.value; render(); };
+  if ($('#fCons')) $('#fCons').onchange = e => { f.vCons = e.target.value; render(); };
+  $('#fSt').onchange = e => { f.vStatus = e.target.value; render(); };
+  $('#fMod').onchange = e => { f.vMod = e.target.value; render(); };
+  const byId = id => S.vendas.find(v => v.id === id);
+  el.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => openVendaForm(byId(b.dataset.ed)));
+  el.querySelectorAll('[data-cx]').forEach(b => b.onclick = () => openCancel(byId(b.dataset.cx)));
+  el.querySelectorAll('[data-re]').forEach(b => b.onclick = () => reativarVenda(byId(b.dataset.re)));
+  el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => excluirVenda(byId(b.dataset.del)));
+}
+const vendaRef = id => db.collection('offices').doc(S.oid).collection('vendas').doc(id);
+
+function openVendaForm(v = null) {
+  const isAdm = S.role === 'admin'; const o = S.office;
+  const mods = o.modalidades || DEFAULT_MODALIDADES; const adms = o.administradoras || [];
+  const exig = !!o.exigirProposta;
+  const cons = S.users.filter(u => u.role !== 'tv' && u.ativo !== false);
+  let mod = v?.modalidade || '';
+  openModal(`
+    <h2>${v ? 'Editar venda' : 'Lançar venda'}</h2>
+    <form id="vf">
+      ${isAdm ? `<label>Consultor</label><select id="vCons" required><option value="">Selecione…</option>${cons.map(u => `<option value="${u.id}" ${(v?.consultorId) === u.id ? 'selected' : ''}>${esc(u.nome)}</option>`).join('')}</select>` : ''}
+      <label>Valor da carta</label><input id="vVal" inputmode="numeric" placeholder="R$ 0,00" value="${moneyVal(v?.valor)}" required style="font-size:1.3rem;font-weight:700">
+      <div class="money-quick">${[50000, 100000, 150000, 200000, 300000, 500000, 1000000].map(n => `<button type="button" class="chip" data-q="${n}">${compact(n)}</button>`).join('')}</div>
+      <label>Modalidade</label><div class="chips" id="vMods">${mods.map(m => `<button type="button" class="chip ${m === mod ? 'on' : ''}" data-m="${esc(m)}">${esc(m)}</button>`).join('')}</div>
+      ${adms.length ? `<label>Administradora</label><select id="vAdm">${adms.map(a => `<option ${v?.administradora === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select>` : ''}
+      <label>Data da venda</label><input id="vData" type="date" value="${v?.data || todayISO()}" required>
+      <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div><label>Nº proposta${exig ? ' *' : ''}</label><input id="vProp" value="${esc(v?.proposta || '')}" ${exig ? 'required' : ''}></div>
+        <div><label>Grupo${exig ? ' *' : ''}</label><input id="vGrp" value="${esc(v?.grupo || '')}" ${exig ? 'required' : ''}></div>
+        <div><label>Cota${exig ? ' *' : ''}</label><input id="vCota" value="${esc(v?.cota || '')}" ${exig ? 'required' : ''}></div>
+      </div>
+      <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn pri">${v ? 'Salvar' : 'Lançar venda 🚀'}</button></div>
+    </form>`, m => {
+    maskMoney($('#vVal'));
+    m.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { $('#vVal').value = moneyVal(+b.dataset.q); });
+    m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mod = b.dataset.m; m.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); });
+    $('#vf').onsubmit = async e => {
+      e.preventDefault();
+      const valor = parseMoney($('#vVal').value);
+      if (!valor) return toast('Informe o valor da carta.', 'err');
+      if (!mod) return toast('Escolha a modalidade.', 'err');
+      const uid = isAdm ? $('#vCons').value : (v?.consultorId || S.user.uid);
+      if (!uid) return toast('Selecione o consultor.', 'err');
+      const u = S.umap[uid] || S.profile;
+      const d = {
+        consultorId: uid, consultorNome: u.nome || '', timeId: u.timeId || '', valor, modalidade: mod,
+        administradora: $('#vAdm') ? $('#vAdm').value : '', data: $('#vData').value,
+        proposta: $('#vProp').value.trim(), grupo: $('#vGrp').value.trim(), cota: $('#vCota').value.trim()
+      };
+      const btn = e.target.querySelector('.btn.pri'); btn.disabled = true;
+      try {
+        if (v) {
+          const mud = Object.keys(d).filter(k => String(d[k]) !== String(v[k] ?? '') && k !== 'consultorNome' && k !== 'timeId');
+          if (!mud.length) { closeModal(); return; }
+          d.editadoEm = Date.now(); d.editadoPor = S.user.uid;
+          await vendaRef(v.id).update(d);
+          const nomes = { consultorId: 'consultor', valor: 'valor', modalidade: 'modalidade', administradora: 'administradora', data: 'data', proposta: 'proposta', grupo: 'grupo', cota: 'cota' };
+          logAcao('Venda editada', `${vendaResumo({ ...v, ...d })} — alterou: ${mud.map(k => k === 'valor' ? `valor ${brl(v.valor)} → ${brl(d.valor)}` : nomes[k]).join(', ')}`, v.id);
+          toast('Venda atualizada.');
+        } else {
+          Object.assign(d, { status: 'ativa', ts: Date.now(), criadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoPor: S.user.uid });
+          const ref = await db.collection('offices').doc(S.oid).collection('vendas').add(d);
+          logAcao('Venda lançada', vendaResumo(d), ref.id);
+          toast('🎉 Venda lançada! Boa!');
+          if (d.data.slice(0, 4) !== String(S.ano)) toast(`A venda foi salva em ${d.data.slice(0, 4)}. Troque o ano para visualizar.`, 'ok', 4000);
+        }
+        closeModal();
+      } catch (er) { toast(authErr(er), 'err'); btn.disabled = false; }
+    };
+  });
+}
+function openCancel(v) {
+  openModal(`<h2>Cancelar venda</h2>
+    <p class="sm mut">${esc(vendaResumo(v))}</p>
+    <p class="sm mt">A venda sai do realizado e das metas, mas fica registrada no histórico de cancelamentos.</p>
+    <form id="cf"><label>Data do cancelamento</label><input type="date" id="cData" value="${todayISO()}" required>
+    <label>Motivo</label><select id="cMot">${MOTIVOS_CANCEL.map(m => `<option>${m}</option>`).join('')}</select>
+    <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn red" style="background:var(--red);color:#fff">Confirmar cancelamento</button></div></form>`, () => {
+    $('#cf').onsubmit = async e => {
+      e.preventDefault();
+      try {
+        await vendaRef(v.id).update({ status: 'cancelada', canceladaEm: $('#cData').value, motivoCancel: $('#cMot').value, canceladoPor: S.user.uid });
+        logAcao('Venda cancelada', `${vendaResumo(v)} — motivo: ${$('#cMot').value}`, v.id);
+        closeModal(); toast('Venda cancelada.');
+      } catch (er) { toast(authErr(er), 'err'); }
+    };
+  });
+}
+function reativarVenda(v) {
+  confirmar('Reativar esta venda? Ela volta a contar no realizado.', async () => {
+    try {
+      await vendaRef(v.id).update({ status: 'ativa', canceladaEm: firebase.firestore.FieldValue.delete(), motivoCancel: firebase.firestore.FieldValue.delete() });
+      logAcao('Venda reativada', vendaResumo(v), v.id); toast('Venda reativada.');
+    } catch (er) { toast(authErr(er), 'err'); }
+  });
+}
+function excluirVenda(v) {
+  confirmar('Excluir definitivamente este lançamento? Use apenas para lançamentos errados — para vendas que caíram, use "Cancelar".', async () => {
+    try { await vendaRef(v.id).delete(); logAcao('Venda excluída', vendaResumo(v), v.id); toast('Lançamento excluído.'); }
+    catch (er) { toast(authErr(er), 'err'); }
+  });
+}
+function confirmar(msg, onYes, btn = 'Confirmar') {
+  openModal(`<h2>Confirmação</h2><p class="mt">${esc(msg)}</p><div class="acts"><button class="btn ghost" data-close>Voltar</button><button class="btn pri" id="cfY">${btn}</button></div>`,
+    () => { $('#cfY').onclick = () => { closeModal(); onYes(); }; });
+}
+
+/* ---------- Ranking ---------- */
+function rankList(rk, per) {
+  if (!rk.length) return '<div class="empty sm">Nenhum consultor cadastrado.</div>';
+  const me = S.user.uid;
+  return rk.map((r, i) => {
+    const mm = per === 'mes' ? metaMensalDe(r.id) : 0;
+    return `<div class="rank-item ${r.id === me ? 'me' : ''}">
+      <div class="rank-pos ${i < 3 && r.valor > 0 ? 'p' + (i + 1) : ''}">${i + 1}</div>
+      <div class="grow"><div class="b">${timeDot(r.timeId)}${esc(r.nome)}${r.id === me ? ' <span class="xs green">(você)</span>' : ''}</div>
+      <div class="xs mut">${r.cotas} cota${r.cotas === 1 ? '' : 's'}${S.tmap[r.timeId] ? ' · ' + esc(S.tmap[r.timeId].nome) : ''}${mm ? ` · ${pctTxt(pct(r.valor, mm))} da meta` : ''}</div>
+      ${mm ? `<div class="bar ${r.valor >= mm ? 'done' : ''}" style="height:6px"><div style="width:${Math.min(100, pct(r.valor, mm))}%"></div></div>` : ''}</div>
+      <div class="b" style="text-align:right">${brl(r.valor)}</div></div>`;
+  }).join('');
+}
+function vRanking(el) {
+  const f = S.f; const [ini, fim] = rangeDoFiltro(f.rPer);
+  const rk = ranking(ini, fim, f.rMod); const rt = rankingTimes(ini, fim, f.rMod);
+  const mods = S.office.modalidades || DEFAULT_MODALIDADES;
+  el.innerHTML = `
+  <h1 class="mb">Ranking</h1>
+  <div class="row between mb">
+    <div class="chips">${[['hoje', 'Hoje'], ['semana', 'Semana'], ['mes', 'Mês'], ['ano', 'Ano']].map(p => `<button class="chip ${f.rPer === p[0] ? 'on' : ''}" data-p="${p[0]}">${p[1]}</button>`).join('')}</div>
+    <select id="rMod" style="width:auto"><option value="">Todas as modalidades</option>${mods.map(m => `<option ${f.rMod === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Consultores</h2>${rankList(rk, f.rPer)}</div>
+    ${rt.length ? `<div class="card"><h2>Times</h2>${rt.map((t, i) => `<div class="rank-item"><div class="rank-pos ${i < 3 && t.valor > 0 ? 'p' + (i + 1) : ''}">${i + 1}</div>
+      <div class="grow"><div class="b"><span class="dot" style="background:${t.cor}"></span>${esc(t.nome)}</div><div class="xs mut">${t.cotas} cotas · ${t.membros} consultores</div></div>
+      <div class="b">${brl(t.valor)}</div></div>`).join('')}</div>` : ''}
+  </div>`;
+  el.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { f.rPer = b.dataset.p; render(); });
+  $('#rMod').onchange = e => { f.rMod = e.target.value; render(); };
+}
+
+/* ---------- Metas ---------- */
+function vMetas(el) {
+  const grupos = Object.keys(PERIODOS);
+  const ord = [...S.metas].sort((a, b) => metaOrdem[a.periodo] - metaOrdem[b.periodo]);
+  el.innerHTML = `
+  <div class="row between mb"><h1>Metas</h1><button class="btn pri" id="nMeta">+ Nova meta</button></div>
+  <p class="mut sm mb">Cadastre metas diárias, semanais, mensais, anuais ou de um período específico — para o escritório, um time, um consultor ou para cada consultor individualmente. Elas aparecem no app e no painel da TV.</p>
+  ${!S.metas.length ? '<div class="card empty">Nenhuma meta cadastrada ainda.</div>' : ''}
+  ${grupos.map(g => {
+    const ms = ord.filter(m => m.periodo === g); if (!ms.length) return '';
+    return `<h2 class="mt2">${PERIODOS[g]}</h2><div class="grid g2">${ms.map(m => {
+      const btns = `<div class="row mt" style="justify-content:flex-end">${m.ativa === false ? '<span class="badge r">Pausada</span>' : ''}
+        <button class="btn sm" data-me="${m.id}">Editar</button><button class="btn sm" data-mt="${m.id}">${m.ativa === false ? 'Ativar' : 'Pausar'}</button><button class="btn sm ghost" data-md="${m.id}">🗑</button></div>`;
+      return m.escopo === 'cada' ? metaCadaCard(m, btns) : metaCard(m, null, btns);
+    }).join('')}</div>`;
+  }).join('')}`;
+  $('#nMeta').onclick = () => openMetaForm();
+  const byId = id => S.metas.find(m => m.id === id); const ref = id => db.collection('offices').doc(S.oid).collection('metas').doc(id);
+  el.querySelectorAll('[data-me]').forEach(b => b.onclick = () => openMetaForm(byId(b.dataset.me)));
+  el.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { const m = byId(b.dataset.mt); ref(m.id).update({ ativa: m.ativa === false }); });
+  el.querySelectorAll('[data-md]').forEach(b => b.onclick = () => confirmar('Excluir esta meta?', () => ref(b.dataset.md).delete().then(() => toast('Meta excluída.'))));
+}
+function openMetaForm(m = null) {
+  const mods = S.office.modalidades || DEFAULT_MODALIDADES;
+  openModal(`<h2>${m ? 'Editar meta' : 'Nova meta'}</h2>
+  <form id="mf">
+    <label>Nome da meta (opcional)</label><input id="mNome" placeholder="Ex.: Meta de outubro, Meta imóvel da semana" value="${esc(m?.nome || '')}">
+    <label>Período</label><select id="mPer">${Object.entries(PERIODOS).map(([k, v]) => `<option value="${k}" ${(m?.periodo || 'mensal') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    <div id="mDatas" class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><div><label>Início</label><input type="date" id="mIni" value="${m?.inicio || todayISO()}"></div><div><label>Fim</label><input type="date" id="mFim" value="${m?.fim || todayISO()}"></div></div>
+    <label>Para quem</label><select id="mEsc">
+      <option value="escritorio" ${m?.escopo === 'escritorio' ? 'selected' : ''}>Escritório (todos juntos)</option>
+      <option value="cada" ${m?.escopo === 'cada' ? 'selected' : ''}>Cada consultor (meta individual padrão)</option>
+      <option value="time" ${m?.escopo === 'time' ? 'selected' : ''}>Um time</option>
+      <option value="consultor" ${m?.escopo === 'consultor' ? 'selected' : ''}>Um consultor específico</option></select>
+    <div id="mAlvoW"><label id="mAlvoL">Selecione</label><select id="mAlvo"></select></div>
+    <label>Modalidade</label><select id="mMod"><option value="">Todas as modalidades</option>${mods.map(x => `<option ${m?.modalidade === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
+    <label>Medir por</label><select id="mTipo"><option value="valor" ${m?.tipo !== 'cotas' ? 'selected' : ''}>Valor em R$ (crédito vendido)</option><option value="cotas" ${m?.tipo === 'cotas' ? 'selected' : ''}>Quantidade de cotas</option></select>
+    <label>Meta</label><input id="mVal" inputmode="numeric" required>
+    ${!m ? `<div class="chk" id="mDerW"><input type="checkbox" id="mDer"><span id="mDerL"></span></div>` : ''}
+    <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn pri">Salvar meta</button></div>
+  </form>`, () => {
+    const per = $('#mPer'), escS = $('#mEsc'), tipo = $('#mTipo');
+    const setVal = () => {
+      const old = $('#mVal'); const nv = old.cloneNode(false); old.replaceWith(nv);
+      const t = tipo.value; const cur = m && m.tipo === t ? m.alvo : 0;
+      if (t === 'cotas') { nv.value = cur || ''; nv.placeholder = 'Ex.: 10'; } else { nv.value = moneyVal(cur); nv.placeholder = 'R$ 0,00'; maskMoney(nv); }
+    };
+    const upd = () => {
+      $('#mDatas').style.display = per.value === 'personalizada' ? 'grid' : 'none';
+      const e = escS.value; $('#mAlvoW').style.display = (e === 'time' || e === 'consultor') ? 'block' : 'none';
+      if (e === 'time') { $('#mAlvoL').textContent = 'Time'; $('#mAlvo').innerHTML = S.times.map(t => `<option value="${t.id}" ${m?.alvoId === t.id ? 'selected' : ''}>${esc(t.nome)}</option>`).join('') || '<option value="">Cadastre times na aba Equipe</option>'; }
+      if (e === 'consultor') { $('#mAlvoL').textContent = 'Consultor'; $('#mAlvo').innerHTML = consultores().map(u => `<option value="${u.id}" ${m?.alvoId === u.id ? 'selected' : ''}>${esc(u.nome)}</option>`).join(''); }
+      if ($('#mDerW')) {
+        const show = per.value === 'anual' || per.value === 'mensal';
+        $('#mDerW').style.display = show ? 'flex' : 'none';
+        $('#mDerL').textContent = per.value === 'anual' ? 'Criar também as metas mensal, semanal e diária automaticamente (dividindo o valor anual)' : 'Criar também as metas semanal e diária automaticamente (dividindo o valor mensal)';
+      }
+    };
+    per.onchange = upd; escS.onchange = upd; tipo.onchange = setVal; setVal(); upd();
+    $('#mf').onsubmit = async e => {
+      e.preventDefault();
+      const t = tipo.value; const vEl = $('#mVal');
+      const alvo = t === 'cotas' ? Math.max(0, parseInt(vEl.value, 10) || 0) : parseMoney(vEl.value);
+      if (!alvo) return toast('Informe o valor da meta.', 'err');
+      const d = { nome: $('#mNome').value.trim(), periodo: per.value, escopo: escS.value, alvoId: (escS.value === 'time' || escS.value === 'consultor') ? $('#mAlvo').value : '',
+        modalidade: $('#mMod').value, tipo: t, alvo, inicio: per.value === 'personalizada' ? $('#mIni').value : '', fim: per.value === 'personalizada' ? $('#mFim').value : '', ativa: m ? m.ativa !== false : true };
+      if ((d.escopo === 'time' || d.escopo === 'consultor') && !d.alvoId) return toast('Selecione para quem é a meta.', 'err');
+      if (d.periodo === 'personalizada' && d.fim < d.inicio) return toast('A data final precisa ser depois da inicial.', 'err');
+      const col = db.collection('offices').doc(S.oid).collection('metas');
+      try {
+        if (m) await col.doc(m.id).update(d);
+        else {
+          const b = db.batch(); b.set(col.doc(), { ...d, ts: Date.now() });
+          if ($('#mDer') && $('#mDer').checked) {
+            const diasAno = S.office.sabadoUtil ? 300 : 250, diasMes = S.office.sabadoUtil ? 26 : 22;
+            const r = x => t === 'cotas' ? Math.max(1, Math.ceil(x)) : Math.round(x);
+            const deriv = d.periodo === 'anual'
+              ? [['mensal', alvo / 12], ['semanal', alvo / 52], ['diaria', alvo / diasAno]]
+              : [['semanal', alvo * 12 / 52], ['diaria', alvo / diasMes]];
+            deriv.forEach(([p, v]) => b.set(col.doc(), { ...d, nome: d.nome ? `${d.nome} (${PERIODOS[p].toLowerCase()})` : '', periodo: p, alvo: r(v), ts: Date.now() }));
+          }
+          await b.commit();
+        }
+        closeModal(); toast('Meta salva.');
+      } catch (er) { toast(authErr(er), 'err'); }
+    };
+  });
+}
+
+/* ---------- Premiações ---------- */
+function premioCard(p, admin = false) {
+  const c = premioCalc(p); const me = S.user.uid;
+  const stB = { ativo: '<span class="badge g">Valendo</span>', futuro: '<span class="badge b">Em breve</span>', encerrado: '<span class="badge">Encerrada</span>' }[c.st];
+  const minha = c.rk.findIndex(r => r.k === me || (p.competidor === 'time' && r.k === S.profile?.timeId));
+  const showAlvo = (p.regra === 'meta' || p.regra === 'primeiro') && c.alvo;
+  const dias = c.st === 'ativo' ? Math.round((parseISO(p.fim) - parseISO(todayISO())) / 864e5) : 0;
+  return `<div class="card">
+    ${p.foto ? `<img class="prize-img" src="${p.foto}">` : ''}
+    <div class="row between" style="align-items:flex-start"><div><div class="b" style="font-size:1.05rem">${esc(p.titulo)}</div>
+      <div class="gold b mt" style="margin-top:4px">🎁 ${esc(p.premio)}</div></div>${stB}</div>
+    ${p.descricao ? `<p class="sm mut mt">${esc(p.descricao)}</p>` : ''}
+    <div class="xs mut mt">${esc(regraTxt(p))}${p.modalidade ? ' · só ' + esc(p.modalidade) : ''}${p.timeId && p.competidor !== 'time' ? ' · time ' + esc(S.tmap[p.timeId]?.nome || '') : ''} · ${brDate(p.inicio)} a ${brDate(p.fim)}${c.st === 'ativo' ? ` · ${dias === 0 ? 'termina hoje' : `faltam ${dias} dia${dias > 1 ? 's' : ''}`}` : ''}</div>
+    ${c.ganhadores.length ? `<div class="mt"><span class="badge y">🏆 ${c.ganhadores.map(g => esc(g.nome)).join(', ')}</span></div>` : ''}
+    <div class="mt">${c.rk.slice(0, 5).map((r, i) => `<div class="hbar"><span class="n">${i + 1}. ${esc(r.nome)}</span>
+      <span class="t"><div style="width:${showAlvo ? Math.min(100, pct(r.val, c.alvo)) : pct(r.val, c.rk[0].val || 1)}%;${showAlvo && r.val >= c.alvo ? 'background:var(--gold)' : ''}"></div></span>
+      <span class="v">${fmtMetaC(r.val, p.tipo)}</span></div>`).join('')}</div>
+    ${!admin && minha >= 5 ? `<div class="xs mut">Sua posição: ${minha + 1}º · ${fmtMetaC(c.rk[minha].val, p.tipo)}${showAlvo ? ` · faltam ${fmtMetaC(Math.max(0, c.alvo - c.rk[minha].val), p.tipo)}` : ''}</div>` : ''}
+    ${admin ? `<div class="row mt" style="justify-content:flex-end"><button class="btn sm" data-pe="${p.id}">Editar</button><button class="btn sm ghost" data-pd="${p.id}">🗑</button></div>` : ''}
+  </div>`;
+}
+function vPremios(el) {
+  const adm = S.role === 'admin';
+  const ord = { ativo: 0, futuro: 1, encerrado: 2 };
+  const ps = S.premios.map(p => ({ p, st: premioCalc(p).st })).sort((a, b) => ord[a.st] - ord[b.st] || (a.p.fim < b.p.fim ? -1 : 1));
+  el.innerHTML = `<div class="row between mb"><h1>Premiações</h1>${adm ? '<button class="btn gold" id="nPrem">+ Nova premiação</button>' : ''}</div>
+  ${adm ? '<p class="mut sm mb">Cadastre campanhas, prêmios e bonificações. O sistema acompanha sozinho quem está mais perto de ganhar e anuncia na TV quando alguém conquista.</p>' : ''}
+  ${ps.length ? `<div class="grid g2">${ps.map(x => premioCard(x.p, adm)).join('')}</div>` : '<div class="card empty">Nenhuma premiação cadastrada.</div>'}`;
+  if (!adm) return;
+  $('#nPrem').onclick = () => openPremioForm();
+  const ref = id => db.collection('offices').doc(S.oid).collection('premios').doc(id);
+  el.querySelectorAll('[data-pe]').forEach(b => b.onclick = () => openPremioForm(S.premios.find(p => p.id === b.dataset.pe)));
+  el.querySelectorAll('[data-pd]').forEach(b => b.onclick = () => confirmar('Excluir esta premiação?', () => ref(b.dataset.pd).delete()));
+}
+function resizeImage(file, max = 700) {
+  return new Promise((res, rej) => {
+    const r = new FileReader(); r.onerror = rej;
+    r.onload = () => { const img = new Image(); img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas');
+      c.width = img.width * s; c.height = img.height * s; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', .75)); }; img.onerror = rej; img.src = r.result; };
+    r.readAsDataURL(file);
+  });
+}
+function openPremioForm(p = null) {
+  const mods = S.office.modalidades || DEFAULT_MODALIDADES; let foto = p?.foto || '';
+  const [mi, mf] = periodRange('mensal');
+  openModal(`<h2>${p ? 'Editar premiação' : 'Nova premiação'}</h2>
+  <form id="pf">
+    <label>Título da campanha</label><input id="pTit" required placeholder="Ex.: Desafio de Outubro" value="${esc(p?.titulo || '')}">
+    <label>Prêmio / bonificação</label><input id="pPre" required placeholder="Ex.: R$ 500 de bônus, jantar, folga na sexta" value="${esc(p?.premio || '')}">
+    <label>Descrição (opcional)</label><textarea id="pDes" rows="2">${esc(p?.descricao || '')}</textarea>
+    <label>Foto do prêmio (opcional)</label><input type="file" id="pFoto" accept="image/*">
+    <img id="pPrev" class="prize-img mt ${foto ? '' : 'hidden'}" src="${foto}">
+    <label>Quem compete</label><select id="pComp"><option value="consultor" ${p?.competidor !== 'time' ? 'selected' : ''}>Consultores</option><option value="time" ${p?.competidor === 'time' ? 'selected' : ''}>Times</option></select>
+    <div id="pTimeW"><label>Restringir a um time (opcional)</label><select id="pTime"><option value="">Todos os consultores</option>${S.times.map(t => `<option value="${t.id}" ${p?.timeId === t.id ? 'selected' : ''}>${esc(t.nome)}</option>`).join('')}</select></div>
+    <label>Regra</label><select id="pReg">
+      <option value="meta" ${p?.regra === 'meta' ? 'selected' : ''}>Todos que atingirem um valor</option>
+      <option value="primeiro" ${p?.regra === 'primeiro' ? 'selected' : ''}>O primeiro a atingir um valor</option>
+      <option value="maior" ${p?.regra === 'maior' ? 'selected' : ''}>Quem mais vender no período</option>
+      <option value="top3" ${p?.regra === 'top3' ? 'selected' : ''}>Top 3 do período</option></select>
+    <label>Medir por</label><select id="pTipo"><option value="valor" ${p?.tipo !== 'cotas' ? 'selected' : ''}>Valor em R$</option><option value="cotas" ${p?.tipo === 'cotas' ? 'selected' : ''}>Quantidade de cotas</option></select>
+    <div id="pAlvoW"><label>Valor a atingir</label><input id="pAlvo" inputmode="numeric"></div>
+    <label>Modalidade</label><select id="pMod"><option value="">Todas</option>${mods.map(x => `<option ${p?.modalidade === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><div><label>Início</label><input type="date" id="pIni" value="${p?.inicio || mi}" required></div><div><label>Fim</label><input type="date" id="pFim" value="${p?.fim || mf}" required></div></div>
+    <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn gold">Salvar premiação</button></div>
+  </form>`, () => {
+    const upd = () => {
+      $('#pTimeW').style.display = $('#pComp').value === 'time' ? 'none' : 'block';
+      $('#pAlvoW').style.display = ['meta', 'primeiro'].includes($('#pReg').value) ? 'block' : 'none';
+    };
+    const setAlvo = () => {
+      const old = $('#pAlvo'); const nv = old.cloneNode(false); old.replaceWith(nv);
+      const t = $('#pTipo').value; const cur = p && p.tipo === t ? p.alvo : 0;
+      if (t === 'cotas') { nv.value = cur || ''; nv.placeholder = 'Ex.: 5'; } else { nv.value = moneyVal(cur); nv.placeholder = 'R$ 0,00'; maskMoney(nv); }
+    };
+    $('#pComp').onchange = upd; $('#pReg').onchange = upd; $('#pTipo').onchange = setAlvo; upd(); setAlvo();
+    $('#pFoto').onchange = async e => { const f = e.target.files[0]; if (!f) return; foto = await resizeImage(f); $('#pPrev').src = foto; $('#pPrev').classList.remove('hidden'); };
+    $('#pf').onsubmit = async e => {
+      e.preventDefault();
+      const t = $('#pTipo').value, reg = $('#pReg').value;
+      const alvo = ['meta', 'primeiro'].includes(reg) ? (t === 'cotas' ? parseInt($('#pAlvo').value, 10) || 0 : parseMoney($('#pAlvo').value)) : 0;
+      if (['meta', 'primeiro'].includes(reg) && !alvo) return toast('Informe o valor a atingir.', 'err');
+      const d = { titulo: $('#pTit').value.trim(), premio: $('#pPre').value.trim(), descricao: $('#pDes').value.trim(), foto,
+        competidor: $('#pComp').value, timeId: $('#pComp').value === 'time' ? '' : $('#pTime').value, regra: reg, tipo: t, alvo,
+        modalidade: $('#pMod').value, inicio: $('#pIni').value, fim: $('#pFim').value };
+      if (d.fim < d.inicio) return toast('A data final precisa ser depois da inicial.', 'err');
+      const col = db.collection('offices').doc(S.oid).collection('premios');
+      try { if (p) await col.doc(p.id).update(d); else await col.add({ ...d, ts: Date.now() }); closeModal(); toast('Premiação salva.'); }
+      catch (er) { toast(authErr(er), 'err'); }
+    };
+  });
+}
+
+/* ---------- Cancelamentos (admin) ---------- */
+function vCancel(el) {
+  const todas = S.vendas; const canc = todas.filter(v => v.status === 'cancelada');
+  const [mi, mf] = periodRange('mensal');
+  const cancMes = canc.filter(v => (v.canceladaEm || '') >= mi && (v.canceladaEm || '') <= mf);
+  const porCons = {};
+  todas.forEach(v => { const k = v.consultorId; porCons[k] = porCons[k] || { nome: v.consultorNome, t: timeDe(v), vend: 0, qv: 0, canc: 0, qc: 0 };
+    porCons[k].vend += Number(v.valor) || 0; porCons[k].qv++;
+    if (v.status === 'cancelada') { porCons[k].canc += Number(v.valor) || 0; porCons[k].qc++; } });
+  const pc = Object.values(porCons).filter(x => x.qc).sort((a, b) => b.canc - a.canc);
+  const agg = key => { const o = {}; canc.forEach(v => { const k = v[key] || '—'; o[k] = (o[k] || 0) + Number(v.valor); }); return Object.entries(o).map(([n, v]) => ({ n, v })).sort((a, b) => b.v - a.v); };
+  const cols = MES_C.map((n, i) => { const ini = `${S.ano}-${pad(i + 1)}-01`, fim = iso(new Date(S.ano, i + 1, 0));
+    return { n, v: somaV(canc.filter(v => (v.canceladaEm || '') >= ini && (v.canceladaEm || '') <= fim)) }; });
+  const maxC = Math.max(1, ...cols.map(c => c.v));
+  el.innerHTML = `
+  <div class="row between mb"><h1>Cancelamentos</h1>${anoSel()}</div>
+  <p class="mut sm mb">Visível apenas para administradores. Considera as vendas feitas em ${S.ano}.</p>
+  <div class="grid g4">
+    ${kpi('Cancelado no ano', `<span class="red">${compact(somaV(canc))}</span>`, `${canc.length} cotas`)}
+    ${kpi('Cancelado no mês', `<span class="red">${compact(somaV(cancMes))}</span>`, `${cancMes.length} cotas`)}
+    ${kpi('Taxa de cancelamento', pctTxt(pct(somaV(canc), somaV(todas))), 'valor cancelado ÷ valor vendido')}
+    ${kpi('Vendido líquido', compact(somaV(ativas())), 'já descontando cancelamentos')}
+  </div>
+  <div class="grid g2 mt2">
+    <div class="card"><h2>Cancelamentos mês a mês</h2><div class="vchart">${cols.map(c => `<div class="c"><div class="cols"><div class="col cx" style="height:${c.v / maxC * 100}%;width:60%" title="${brl(c.v)}"></div></div><span class="lb">${c.n}</span></div>`).join('')}</div></div>
+    <div class="card"><h2>Por motivo</h2>${hbars(agg('motivoCancel'))}<h2 class="mt2">Por modalidade</h2>${hbars(agg('modalidade'))}</div>
+  </div>
+  <div class="card mt2 tblw"><h2>Por consultor</h2>${pc.length ? `<table class="tbl"><thead><tr><th>Consultor</th><th>Vendido</th><th>Cancelado</th><th>Cotas canc.</th><th>Taxa</th></tr></thead><tbody>
+    ${pc.map(x => { const tx = pct(x.canc, x.vend); return `<tr><td>${timeDot(x.t)}${esc(x.nome)}</td><td>${brl(x.vend)}</td><td class="red b">${brl(x.canc)}</td><td>${x.qc} de ${x.qv}</td><td><span class="badge ${tx >= 20 ? 'r' : tx >= 10 ? 'y' : ''}">${pctTxt(tx)}</span></td></tr>`; }).join('')}
+  </tbody></table>` : '<div class="empty sm">Nenhum cancelamento em ' + S.ano + ' 🎉</div>'}</div>`;
+  bindAno();
+}
+
+/* ---------- Equipe (admin) ---------- */
+function vEquipe(el) {
+  const max = S.office.maxConsultores || 50; const nAt = consultores().length;
+  const roleB = { admin: '<span class="badge y">Admin</span>', consultor: '<span class="badge g">Consultor</span>', tv: '<span class="badge b">TV</span>' };
+  el.innerHTML = `
+  <div class="row between mb"><h1>Equipe</h1><button class="btn pri" id="nUser">+ Novo usuário</button></div>
+  <div class="card"><div class="row between"><div><div class="b">${nAt} de ${max} consultores ativos</div><div class="xs mut">Plano do escritório</div></div></div>
+    <div class="bar"><div style="width:${Math.min(100, pct(nAt, max))}%"></div></div></div>
+  <div class="card mt tblw"><h2>Usuários</h2>
+  <table class="tbl"><thead><tr><th>Nome</th><th>E-mail</th><th>Função</th><th>Time</th><th>Status</th><th></th></tr></thead><tbody>
+  ${S.users.map(u => `<tr><td class="b">${esc(u.nome)}</td><td class="sm mut">${esc(u.email)}</td><td>${roleB[u.role] || ''}</td>
+    <td>${S.tmap[u.timeId] ? timeDot(u.timeId) + esc(S.tmap[u.timeId].nome) : '<span class="mut">—</span>'}</td>
+    <td>${u.ativo === false ? '<span class="badge r">Inativo</span>' : '<span class="badge g">Ativo</span>'}</td>
+    <td style="white-space:nowrap"><button class="btn sm" data-ue="${u.id}">Editar</button>
+    ${u.id !== S.user.uid ? `<button class="btn sm" data-ua="${u.id}">${u.ativo === false ? 'Ativar' : 'Desativar'}</button>` : ''}
+    <button class="btn sm ghost" data-ur="${u.id}" title="Enviar e-mail para redefinir senha">🔑</button></td></tr>`).join('')}
+  </tbody></table>
+  <p class="xs mut mt">Dica: crie um usuário do tipo <b>TV</b> e faça login com ele na televisão do escritório — ele abre direto no painel, só com permissão de leitura.</p></div>
+  <div class="row between mt2 mb"><h2 style="margin:0">Times</h2><button class="btn" id="nTime">+ Novo time</button></div>
+  ${S.times.length ? `<div class="grid g4">${S.times.map(t => { const ms = consultores().filter(u => u.timeId === t.id);
+    return `<div class="card" style="border-top:4px solid ${t.cor}"><div class="b">${esc(t.nome)}</div>
+    <div class="xs mut">${ms.length} consultores${t.liderId && S.umap[t.liderId] ? ' · Líder: ' + esc(S.umap[t.liderId].nome) : ''}</div>
+    <div class="row mt"><button class="btn sm" data-te="${t.id}">Editar</button><button class="btn sm ghost" data-td="${t.id}">🗑</button></div></div>`; }).join('')}</div>`
+    : '<div class="card empty sm">Nenhum time. Times são opcionais — use para separar equipes por líder.</div>'}`;
+  $('#nUser').onclick = () => openUserForm();
+  $('#nTime').onclick = () => openTimeForm();
+  el.querySelectorAll('[data-ue]').forEach(b => b.onclick = () => openUserForm(S.umap[b.dataset.ue]));
+  el.querySelectorAll('[data-ua]').forEach(b => b.onclick = async () => {
+    const u = S.umap[b.dataset.ua]; const ativar = u.ativo === false;
+    if (ativar && u.role === 'consultor' && consultores().length >= (S.office.maxConsultores || 50)) return toast('Limite de consultores do plano atingido.', 'err');
+    try { await db.collection('users').doc(u.id).update({ ativo: ativar }); toast(ativar ? 'Usuário ativado.' : 'Usuário desativado.'); } catch (er) { toast(authErr(er), 'err'); }
+  });
+  el.querySelectorAll('[data-ur]').forEach(b => b.onclick = async () => {
+    const u = S.umap[b.dataset.ur];
+    try { await auth.sendPasswordResetEmail(u.email); toast('Link de nova senha enviado para ' + u.email); } catch (er) { toast(authErr(er), 'err'); }
+  });
+  el.querySelectorAll('[data-te]').forEach(b => b.onclick = () => openTimeForm(S.tmap[b.dataset.te]));
+  el.querySelectorAll('[data-td]').forEach(b => b.onclick = () => confirmar('Excluir este time? Os consultores ficarão sem time.', async () => {
+    const batch = db.batch(); batch.delete(db.collection('offices').doc(S.oid).collection('times').doc(b.dataset.td));
+    S.users.filter(u => u.timeId === b.dataset.td).forEach(u => batch.update(db.collection('users').doc(u.id), { timeId: '' }));
+    await batch.commit(); toast('Time excluído.');
+  }));
+}
+function openUserForm(u = null) {
+  openModal(`<h2>${u ? 'Editar usuário' : 'Novo usuário'}</h2>
+  <form id="uf">
+    <label>Nome</label><input id="uNome" required value="${esc(u?.nome || '')}">
+    ${u ? `<label>E-mail</label><input value="${esc(u.email)}" disabled>` : `<label>E-mail (login)</label><input id="uEmail" type="email" required><label>Senha inicial</label><input id="uSenha" type="text" required minlength="6" placeholder="mínimo 6 caracteres">`}
+    <label>Função</label><select id="uRole" ${u?.id === S.user.uid ? 'disabled' : ''}>
+      <option value="consultor" ${u?.role === 'consultor' ? 'selected' : ''}>Consultor — lança as próprias vendas</option>
+      <option value="admin" ${u?.role === 'admin' ? 'selected' : ''}>Administrador — gerencia o escritório</option>
+      <option value="tv" ${u?.role === 'tv' ? 'selected' : ''}>TV — só exibe o painel</option></select>
+    <label>Time</label><select id="uTime"><option value="">Sem time</option>${S.times.map(t => `<option value="${t.id}" ${u?.timeId === t.id ? 'selected' : ''}>${esc(t.nome)}</option>`).join('')}</select>
+    <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn pri">Salvar</button></div>
+  </form>`, () => {
+    $('#uf').onsubmit = async e => {
+      e.preventDefault(); const btn = e.target.querySelector('.btn.pri'); btn.disabled = true;
+      const role = $('#uRole').value; const d = { nome: $('#uNome').value.trim(), role: u?.id === S.user.uid ? u.role : role, timeId: $('#uTime').value };
+      try {
+        if (u) {
+          if (d.role === 'consultor' && u.role !== 'consultor' && u.ativo !== false && consultores().length >= (S.office.maxConsultores || 50)) throw { message: 'Limite de consultores do plano atingido.' };
+          await db.collection('users').doc(u.id).update(d);
+        } else {
+          if (role === 'consultor' && consultores().length >= (S.office.maxConsultores || 50)) throw { message: `Limite de ${S.office.maxConsultores || 50} consultores do plano atingido.` };
+          const email = $('#uEmail').value.trim().toLowerCase();
+          const uid = await criarUsuarioAuth(email, $('#uSenha').value);
+          await db.collection('users').doc(uid).set({ ...d, email, officeId: S.oid, ativo: true, criadoEm: Date.now() });
+        }
+        closeModal(); toast('Usuário salvo.');
+      } catch (er) { toast(authErr(er), 'err'); btn.disabled = false; }
+    };
+  });
+}
+function openTimeForm(t = null) {
+  let cor = t?.cor || TEAM_COLORS[S.times.length % TEAM_COLORS.length];
+  openModal(`<h2>${t ? 'Editar time' : 'Novo time'}</h2>
+  <form id="tf"><label>Nome do time</label><input id="tNome" required value="${esc(t?.nome || '')}" placeholder="Ex.: Time Raphael">
+  <label>Cor</label><div class="chips">${TEAM_COLORS.map(c => `<button type="button" class="chip" data-c="${c}" style="background:${c};width:34px;height:34px;${c === cor ? 'outline:3px solid #fff' : ''}"></button>`).join('')}</div>
+  <label>Líder (opcional)</label><select id="tLid"><option value="">—</option>${S.users.filter(u => u.role !== 'tv').map(u => `<option value="${u.id}" ${t?.liderId === u.id ? 'selected' : ''}>${esc(u.nome)}</option>`).join('')}</select>
+  <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn pri">Salvar</button></div></form>`, m => {
+    m.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { cor = b.dataset.c; m.querySelectorAll('[data-c]').forEach(x => x.style.outline = x === b ? '3px solid #fff' : 'none'); });
+    $('#tf').onsubmit = async e => {
+      e.preventDefault(); const d = { nome: $('#tNome').value.trim(), cor, liderId: $('#tLid').value };
+      const col = db.collection('offices').doc(S.oid).collection('times');
+      try { if (t) await col.doc(t.id).update(d); else await col.add(d); closeModal(); toast('Time salvo.'); } catch (er) { toast(authErr(er), 'err'); }
+    };
+  });
+}
+
+/* ---------- Histórico (admin) ---------- */
+function vHist(el) {
+  el.innerHTML = `<h1 class="mb">Histórico de alterações</h1><p class="mut sm mb">Tudo que foi lançado, editado, cancelado ou excluído — com quem fez e quando.</p><div class="card" id="hl"><div class="empty">Carregando…</div></div>`;
+  db.collection('offices').doc(S.oid).collection('logs').orderBy('ts', 'desc').limit(300).get().then(s => {
+    const l = s.docs.map(d => d.data());
+    const cor = a => a.includes('cancel') ? 'r' : a.includes('exclu') ? 'r' : a.includes('edit') ? 'y' : a.includes('reativ') ? 'b' : 'g';
+    $('#hl').innerHTML = l.length ? `<div class="tblw"><table class="tbl"><thead><tr><th>Quando</th><th>Ação</th><th>Detalhes</th><th>Por</th></tr></thead><tbody>
+      ${l.map(x => { const d = new Date(x.ts); return `<tr><td class="sm" style="white-space:nowrap">${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td>
+      <td><span class="badge ${cor(x.acao.toLowerCase())}">${esc(x.acao)}</span></td><td class="sm">${esc(x.resumo)}</td><td class="sm">${esc(x.porNome)}</td></tr>`; }).join('')}
+      </tbody></table></div>` : '<div class="empty">Nenhum registro ainda.</div>';
+  }).catch(er => $('#hl').innerHTML = `<div class="empty red">${esc(authErr(er))}</div>`);
+}
+
+/* ---------- Configurações (admin) ---------- */
+function vConfig(el) {
+  const o = S.office; let mods = [...(o.modalidades || DEFAULT_MODALIDADES)], adms = [...(o.administradoras || [])];
+  let telas = o.tvTelas || Object.keys(TV_TELAS);
+  el.innerHTML = `<h1 class="mb">Configurações</h1>
+  <div class="grid g2">
+  <div class="card"><h2>Escritório</h2>
+    <label>Nome do escritório</label><input id="cNome" value="${esc(o.nome || '')}">
+    <label>Cidade</label><input id="cCid" value="${esc(o.cidade || '')}">
+    <div class="chk"><input type="checkbox" id="cSab" ${o.sabadoUtil ? 'checked' : ''}><span>Contar sábado como dia útil (cálculo do ritmo diário)</span></div>
+    <div class="chk"><input type="checkbox" id="cExig" ${o.exigirProposta ? 'checked' : ''}><span>Exigir nº da proposta, grupo e cota ao lançar venda</span></div>
+    <h2 class="mt2">Modalidades</h2><div class="chips" id="cMods"></div>
+    <div class="row mt"><input id="cModN" placeholder="Nova modalidade" class="grow" style="width:auto"><button class="btn" id="cModA">Adicionar</button></div>
+    <h2 class="mt2">Administradoras (opcional)</h2><p class="xs mut">Se o escritório vende mais de uma administradora, cadastre aqui e o campo aparece no lançamento.</p><div class="chips" id="cAdms"></div>
+    <div class="row mt"><input id="cAdmN" placeholder="Nova administradora" class="grow" style="width:auto"><button class="btn" id="cAdmA">Adicionar</button></div>
+  </div>
+  <div class="card"><h2>Painel da TV</h2>
+    <label>Telas exibidas</label>${Object.entries(TV_TELAS).map(([k, v]) => `<div class="chk"><input type="checkbox" data-tela="${k}" ${telas.includes(k) ? 'checked' : ''}><span>${v}</span></div>`).join('')}
+    <label>Tempo de cada tela (segundos)</label><input id="cInt" type="number" min="5" max="120" value="${o.tvIntervalo || 15}">
+    <label>Venda grande (comemoração especial na TV a partir de)</label><input id="cGr" inputmode="numeric" value="${moneyVal(o.vendaGrande || 500000)}">
+    <p class="xs mut mt">Para abrir o painel: clique em "📺 Painel TV" no topo, ou crie um usuário do tipo TV na aba Equipe e faça login na televisão.</p>
+  </div></div>
+  <button class="btn pri big mt2" id="cSave">Salvar configurações</button>`;
+  maskMoney($('#cGr'));
+  const drawChips = () => {
+    $('#cMods').innerHTML = mods.map((m, i) => `<span class="chip">${esc(m)}<span class="x" data-rm="${i}">✕</span></span>`).join('');
+    $('#cAdms').innerHTML = adms.map((m, i) => `<span class="chip">${esc(m)}<span class="x" data-ra="${i}">✕</span></span>`).join('') || '<span class="xs mut">Nenhuma</span>';
+    el.querySelectorAll('[data-rm]').forEach(x => x.onclick = () => { mods.splice(+x.dataset.rm, 1); drawChips(); });
+    el.querySelectorAll('[data-ra]').forEach(x => x.onclick = () => { adms.splice(+x.dataset.ra, 1); drawChips(); });
+  };
+  drawChips();
+  $('#cModA').onclick = () => { const v = $('#cModN').value.trim(); if (v && !mods.includes(v)) { mods.push(v); $('#cModN').value = ''; drawChips(); } };
+  $('#cAdmA').onclick = () => { const v = $('#cAdmN').value.trim(); if (v && !adms.includes(v)) { adms.push(v); $('#cAdmN').value = ''; drawChips(); } };
+  $('#cSave').onclick = async () => {
+    if (!mods.length) return toast('Cadastre pelo menos uma modalidade.', 'err');
+    const tv = [...el.querySelectorAll('[data-tela]')].filter(c => c.checked).map(c => c.dataset.tela);
+    try {
+      await db.collection('offices').doc(S.oid).update({ nome: $('#cNome').value.trim(), cidade: $('#cCid').value.trim(), sabadoUtil: $('#cSab').checked,
+        exigirProposta: $('#cExig').checked, modalidades: mods, administradoras: adms, tvTelas: tv.length ? tv : ['metas'],
+        tvIntervalo: Math.max(5, +$('#cInt').value || 15), vendaGrande: parseMoney($('#cGr').value) || 500000 });
+      toast('Configurações salvas.');
+    } catch (er) { toast(authErr(er), 'err'); }
+  };
+}
+
+/* ---------- Minha conta (consultor) ---------- */
+function vConta(el) {
+  el.innerHTML = `<h1 class="mb">Minha conta</h1><div class="card" style="max-width:480px">
+    <div class="b">${esc(S.profile.nome)}</div><div class="sm mut">${esc(S.user.email)}</div>
+    <label>Nova senha</label><input id="ns" type="password" minlength="6" placeholder="mínimo 6 caracteres">
+    <button class="btn pri mt" id="nsB">Alterar senha</button></div>`;
+  $('#nsB').onclick = async () => {
+    const s = $('#ns').value; if (s.length < 6) return toast('A senha precisa ter pelo menos 6 caracteres.', 'err');
+    try { await S.user.updatePassword(s); toast('Senha alterada.'); $('#ns').value = ''; }
+    catch (er) { toast(er.code === 'auth/requires-recent-login' ? 'Por segurança, saia e entre novamente antes de trocar a senha.' : authErr(er), 'err'); }
+  };
+}
+</script>
+<script>
+/* =========================================================
+   PAINEL MASTER (dono do sistema)
+   ========================================================= */
+function loadSuper() {
+  $('#app').innerHTML = '<div class="loader">Carregando painel master…</div>';
+  S.unsubs.push(db.collection('offices').onSnapshot(s => {
+    S.offices = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    renderSuper();
+  }, e => toast(authErr(e), 'err')));
+  db.collection('users').get().then(s => { S.allUsers = s.docs.map(d => ({ id: d.id, ...d.data() })); renderSuper(); }).catch(() => {});
+}
+function renderSuper() {
+  if (S.suporte) return;
+  const at = S.offices.filter(o => o.ativo !== false);
+  const mrr = at.reduce((a, o) => a + (Number(o.valorMensal) || 0), 0);
+  const nCons = oid => S.allUsers.filter(u => u.officeId === oid && u.role === 'consultor' && u.ativo !== false).length;
+  $('#app').innerHTML = `
+  <header class="top"><div class="top-in"><div class="logo"><i>M</i>${APP_NAME}</div><div class="office">Painel master</div><div class="grow"></div>
+  <button class="btn sm ghost" id="bOut">Sair</button></div></header>
+  <main>
+    <div class="row between mb"><h1>Escritórios</h1><button class="btn pri" id="nOff">+ Novo escritório</button></div>
+    <div class="grid g4">
+      ${kpi('Escritórios ativos', at.length, `${S.offices.length - at.length} suspensos`)}
+      ${kpi('Receita mensal', brl(mrr), 'soma dos planos ativos')}
+      ${kpi('Consultores', S.allUsers.filter(u => u.role === 'consultor' && u.ativo !== false).length, 'ativos em todos os escritórios')}
+    </div>
+    <div class="card mt2 tblw">${S.offices.length ? `<table class="tbl"><thead><tr><th>Escritório</th><th>Consultores</th><th>Plano</th><th>Vencimento</th><th>Status</th><th></th></tr></thead><tbody>
+    ${S.offices.map(o => `<tr><td><div class="b">${esc(o.nome)}</div><div class="xs mut">${esc(o.cidade || '')}</div></td>
+      <td>${nCons(o.id)} / ${o.maxConsultores || 50}</td><td>${brl2(o.valorMensal || 0)}/mês</td><td>Dia ${o.diaVencimento || '—'}</td>
+      <td>${o.ativo === false ? '<span class="badge r">Suspenso</span>' : '<span class="badge g">Ativo</span>'}</td>
+      <td style="white-space:nowrap"><button class="btn sm pri" data-in="${o.id}">Entrar</button> <button class="btn sm" data-oe="${o.id}">Editar</button>
+      <button class="btn sm ${o.ativo === false ? '' : 'red'}" data-os="${o.id}">${o.ativo === false ? 'Reativar' : 'Suspender'}</button></td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">Nenhum escritório cadastrado. Crie o primeiro!</div>'}</div>
+  </main>`;
+  $('#bOut').onclick = () => auth.signOut();
+  $('#nOff').onclick = () => openOfficeForm();
+  const byId = id => S.offices.find(o => o.id === id);
+  document.querySelectorAll('[data-in]').forEach(b => b.onclick = () => entrarSuporte(byId(b.dataset.in)));
+  document.querySelectorAll('[data-oe]').forEach(b => b.onclick = () => openOfficeForm(byId(b.dataset.oe)));
+  document.querySelectorAll('[data-os]').forEach(b => b.onclick = () => {
+    const o = byId(b.dataset.os); const at = o.ativo === false;
+    confirmar(at ? `Reativar ${o.nome}?` : `Suspender ${o.nome}? Ninguém do escritório conseguirá acessar.`, () => db.collection('offices').doc(o.id).update({ ativo: at }));
+  });
+}
+function openOfficeForm(o = null) {
+  openModal(`<h2>${o ? 'Editar escritório' : 'Novo escritório'}</h2>
+  <form id="of">
+    <label>Nome do escritório</label><input id="oNome" required value="${esc(o?.nome || '')}" placeholder="Ex.: Escritório Barra do Garças">
+    <label>Cidade</label><input id="oCid" value="${esc(o?.cidade || '')}">
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div><label>Valor mensal</label><input id="oVal" inputmode="numeric" value="${moneyVal(o?.valorMensal ?? 150)}"></div>
+      <div><label>Máx. consultores</label><input id="oMax" type="number" value="${o?.maxConsultores || 50}"></div>
+      <div><label>Dia vencimento</label><input id="oVenc" type="number" min="1" max="31" value="${o?.diaVencimento || 10}"></div>
+    </div>
+    ${o ? '' : `<h2 class="mt2">Administrador do escritório</h2>
+      <label>Nome</label><input id="aNome" required><label>E-mail (login)</label><input id="aEmail" type="email" required>
+      <label>Senha inicial</label><input id="aSenha" required minlength="6">`}
+    <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn pri">Salvar</button></div>
+  </form>`, () => {
+    maskMoney($('#oVal'));
+    $('#of').onsubmit = async e => {
+      e.preventDefault(); const btn = e.target.querySelector('.btn.pri'); btn.disabled = true;
+      const d = { nome: $('#oNome').value.trim(), cidade: $('#oCid').value.trim(), valorMensal: parseMoney($('#oVal').value),
+        maxConsultores: +$('#oMax').value || 50, diaVencimento: +$('#oVenc').value || 10 };
+      try {
+        if (o) await db.collection('offices').doc(o.id).update(d);
+        else {
+          const ref = db.collection('offices').doc();
+          await ref.set({ ...d, ativo: true, criadoEm: Date.now(), modalidades: DEFAULT_MODALIDADES, administradoras: [], exigirProposta: false,
+            sabadoUtil: false, vendaGrande: 500000, tvTelas: Object.keys(TV_TELAS), tvIntervalo: 15 });
+          const email = $('#aEmail').value.trim().toLowerCase();
+          const uid = await criarUsuarioAuth(email, $('#aSenha').value);
+          await db.collection('users').doc(uid).set({ nome: $('#aNome').value.trim(), email, role: 'admin', officeId: ref.id, timeId: '', ativo: true, criadoEm: Date.now() });
+          S.allUsers.push({ id: uid, officeId: ref.id, role: 'admin' });
+        }
+        closeModal(); toast('Escritório salvo.');
+      } catch (er) { toast(authErr(er), 'err'); btn.disabled = false; }
+    };
+  });
+}
+function entrarSuporte(o) {
+  unsubAll(); S.suporte = true; S.oid = o.id; S.role = 'admin'; S.office = null; S.tab = 'inicio'; S.tv = false;
+  S.profile = { id: S.user.uid, nome: 'Suporte ' + APP_NAME };
+  $('#app').innerHTML = '<div class="loader">Abrindo escritório…</div>';
+  startOffice();
+}
+function sairSuporte() {
+  tvStop(); unsubAll(); S.suporte = false; S.tv = false; S.office = null; S.oid = null; S.role = 'super'; S.profile = { nome: 'Master' };
+  loadSuper();
+}
+
+/* =========================================================
+   PAINEL DA TV
+   ========================================================= */
+const TV = { idx: 0, rot: null, clk: null, started: false, prevMeta: null, prevPrem: null, Q: [], busy: false, lock: null, key: null };
+
+function tvTelas() {
+  let l = (S.office.tvTelas && S.office.tvTelas.length ? S.office.tvTelas : Object.keys(TV_TELAS));
+  return l.filter(k => (k !== 'premios' || S.premios.some(p => premioCalc(p).st === 'ativo')) && (k !== 'times' || S.times.length));
+}
+function renderTV() {
+  if (!$('.tv')) {
+    $('#app').innerHTML = `
+    <div class="tv">
+      <div class="tv-top"><div class="logo" id="tvLogo"><i>M</i><span>${esc(S.office.nome || APP_NAME)}</span></div><div class="tv-clock" id="tvClock"></div></div>
+      <div class="tv-stage" id="tvStage"></div>
+      <div class="tv-foot"><div id="tvFL"></div><div class="tv-dots" id="tvDots"></div><div id="tvFR"></div></div>
+    </div>
+    ${TV.started ? '' : `<div class="tv-start" id="tvStart"><div class="logo" style="font-size:3vw"><i style="width:4vw;height:4vw;font-size:2vw">M</i>${APP_NAME}</div>
+      <p class="mut" style="font-size:1.3vw">Painel de metas e vendas — ${esc(S.office.nome || '')}</p>
+      <button class="btn pri" id="tvGo">▶ Iniciar painel com som</button>
+      <p class="mut" style="font-size:1vw">O navegador só libera o som depois de um clique. Dê dois cliques no logo para sair do painel.</p></div>`}`;
+    if ($('#tvGo')) $('#tvGo').onclick = tvStart;
+    $('#tvLogo').ondblclick = tvExit;
+    TV.idx = 0; tvShow(true);
+    tvClock(); clearInterval(TV.clk); TV.clk = setInterval(tvClock, 10000);
+    tvRotStart();
+  } else tvShow(false);
+  tvCheckEvents();
+}
+function tvRotStart() {
+  clearInterval(TV.rot);
+  TV.rot = setInterval(() => { if (TV.busy) return; TV.idx++; tvShow(true); }, Math.max(5, S.office.tvIntervalo || 15) * 1000);
+}
+function tvStart() {
+  ac(); TV.started = true; $('#tvStart')?.remove();
+  try { document.documentElement.requestFullscreen?.(); } catch (e) {}
+  tvWake(); playSound('teste');
+}
+async function tvWake() { try { if ('wakeLock' in navigator) TV.lock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (S.tv && document.visibilityState === 'visible') tvWake(); });
+function tvStop() { clearInterval(TV.rot); clearInterval(TV.clk); TV.prevMeta = null; TV.prevPrem = null; TV.Q = []; TV.busy = false; $('#celeb')?.remove(); try { TV.lock?.release(); } catch (e) {} }
+function tvExit() {
+  if (S.role === 'tv') return confirmar('Sair da conta da TV?', () => auth.signOut(), 'Sair');
+  tvStop(); try { document.exitFullscreen?.(); } catch (e) {}
+  if (S.suporte) { S.tv = false; render(); } else location.href = location.pathname;
+}
+function tvClock() {
+  const d = new Date(); const c = $('#tvClock'); if (!c) return;
+  c.innerHTML = `${pad(d.getHours())}:${pad(d.getMinutes())}<small>${d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</small>`;
+}
+function tvShow(nova) {
+  const telas = tvTelas(); if (!telas.length) return;
+  const k = telas[TV.idx % telas.length]; const st = $('#tvStage'); if (!st) return;
+  const html = { metas: tvMetas, ranking: tvRanking, times: tvTimes, premios: tvPremios, ultimas: tvUltimas }[k]();
+  let sc = st.querySelector('.tv-screen');
+  if (nova || !sc) { st.innerHTML = `<div class="tv-screen">${html}</div>`; } else sc.innerHTML = html;
+  $('#tvDots').innerHTML = telas.map((t, i) => `<i class="${i === TV.idx % telas.length ? 'on' : ''}"></i>`).join('');
+  const [hi] = periodRange('diaria'), [mi, mf] = periodRange('mensal');
+  const h = vendasEntre(hi, hi), m = vendasEntre(mi, mf);
+  $('#tvFL').innerHTML = `Hoje: <b style="color:var(--tx)">${compact(somaV(h))}</b> · ${h.length} cota${h.length === 1 ? '' : 's'}`;
+  $('#tvFR').innerHTML = `${MESES[new Date().getMonth()]}: <b style="color:var(--tx)">${compact(somaV(m))}</b> · ${m.length} cotas`;
+}
+function tvBar(p, cls = '') { return `<div class="tv-bar ${p >= 100 ? 'done' : ''} ${cls}"><div style="width:${Math.min(100, p)}%"></div><span>${pctTxt(p)}</span></div>`; }
+
+function tvMetas() {
+  const ms = metasAtivas().filter(m => m.escopo === 'escritorio').sort((a, b) => metaOrdem[a.periodo] - metaOrdem[b.periodo]);
+  const hero = ms.find(m => m.periodo === 'mensal' && !m.modalidade) || ms[0];
+  const [mi, mf] = periodRange('mensal'), [hi] = periodRange('diaria');
+  const mesV = somaV(vendasEntre(mi, mf)), hojeV = somaV(vendasEntre(hi, hi));
+  if (!hero) return `<div class="tv-title">Vendas de ${MESES[new Date().getMonth()]}</div>
+    <div class="tv-hero"><div class="big">${compact(mesV)}</div><div class="of mt">vendidos no mês · hoje: ${compact(hojeV)}</div></div>`;
+  const r = metaProgress(hero); const done = r.p >= 100;
+  const outras = ms.filter(x => x !== hero).slice(0, 3);
+  return `<div class="tv-title">${esc(hero.nome || 'Meta ' + PERIODOS[hero.periodo].toLowerCase())} — ${esc(periodoLabel(hero))}${hero.modalidade ? ' · ' + esc(hero.modalidade) : ''}</div>
+  <div class="tv-hero">
+    <div class="row" style="align-items:baseline;gap:1.4vw"><div class="big ${done ? 'gold' : ''}">${fmtMetaC(r.real, hero.tipo)}</div><div class="of">de ${fmtMetaC(r.alvo, hero.tipo)}</div></div>
+    ${tvBar(r.p)}
+    <div class="tv-stats">
+      ${done ? `<div class="tv-stat"><div class="l">Status</div><div class="v gold">🏆 Meta batida!</div></div><div class="tv-stat"><div class="l">Superamos em</div><div class="v gold">${fmtMetaC(r.real - r.alvo, hero.tipo)}</div></div>`
+        : `<div class="tv-stat"><div class="l">Falta para bater</div><div class="v">${fmtMetaC(r.falta, hero.tipo)}</div></div>
+           <div class="tv-stat"><div class="l">Precisamos por dia útil</div><div class="v green">${fmtMetaC(r.ritmo, hero.tipo)}</div></div>
+           <div class="tv-stat"><div class="l">Dias úteis restantes</div><div class="v">${r.dias}</div></div>`}
+      <div class="tv-stat"><div class="l">Vendido hoje</div><div class="v">${compact(hojeV)}</div></div>
+    </div>
+  </div>
+  ${outras.length ? `<div class="tv-cards">${outras.map(m => { const x = metaProgress(m); return `<div class="tv-card">
+    <div class="l">${esc(m.nome || 'Meta ' + PERIODOS[m.periodo].toLowerCase())}${m.modalidade ? ' · ' + esc(m.modalidade) : ''}</div>
+    <div class="v ${x.p >= 100 ? 'gold' : ''}">${fmtMetaC(x.real, m.tipo)} <span style="font-size:1.2vw;color:var(--mut)">de ${fmtMetaC(x.alvo, m.tipo)}</span></div>
+    ${tvBar(x.p)}<div class="s">${x.p >= 100 ? '🏆 Batida!' : 'Faltam ' + fmtMetaC(x.falta, m.tipo)}</div></div>`; }).join('')}</div>` : ''}`;
+}
+function tvRanking() {
+  const [mi, mf] = periodRange('mensal'); const rk = ranking(mi, mf).slice(0, 10);
+  const top = rk[0]?.valor || 1;
+  const ord = []; for (let i = 0; i < 5; i++) { if (rk[i]) ord.push([rk[i], i]); if (rk[i + 5]) ord.push([rk[i + 5], i + 5]); }
+  return `<div class="tv-title">Ranking de consultores — ${MESES[new Date().getMonth()]}</div>
+  <div class="tv-rank">${ord.map(([r, i]) => { const mm = metaMensalDe(r.id); const p = mm ? pct(r.valor, mm) : pct(r.valor, top);
+    return `<div class="tv-ri"><div class="pos ${i < 3 && r.valor > 0 ? 'p' + (i + 1) : ''}">${i + 1}</div>
+    <div class="grow" style="min-width:0"><div class="nm">${esc(r.nome)}</div><div class="tm">${S.tmap[r.timeId] ? `<span class="dot" style="background:${S.tmap[r.timeId].cor}"></span>${esc(S.tmap[r.timeId].nome)} · ` : ''}${r.cotas} cotas${mm ? ' · ' + pctTxt(p) + ' da meta' : ''}</div>
+    <div class="mini"><div style="width:${Math.min(100, p)}%;${mm && p >= 100 ? 'background:var(--gold)' : ''}"></div></div></div>
+    <div class="val">${compact(r.valor)}</div></div>`; }).join('')}</div>`;
+}
+function tvTimes() {
+  const [mi, mf] = periodRange('mensal'); const rt = rankingTimes(mi, mf);
+  return `<div class="tv-title">Disputa de times — ${MESES[new Date().getMonth()]}</div>
+  <div class="tv-teams">${rt.map((t, i) => {
+    const m = metasAtivas().find(x => x.escopo === 'time' && x.alvoId === t.id && x.periodo === 'mensal');
+    const r = m ? metaProgress(m) : null;
+    return `<div class="tv-team" style="border-top-color:${t.cor}"><div class="row between"><div class="nm">${i === 0 && t.valor > 0 ? '👑 ' : ''}${esc(t.nome)}</div><div style="font-size:2vw;font-weight:900;color:var(--mut)">${i + 1}º</div></div>
+      <div class="v">${compact(t.valor)}</div><div style="font-size:1.2vw;color:var(--mut)">${t.cotas} cotas · ${t.membros} consultores</div>
+      ${r ? `${tvBar(r.p)}<div style="font-size:1.1vw;color:var(--mut)">Meta ${fmtMetaC(r.alvo, m.tipo)} · ${r.p >= 100 ? '🏆 batida!' : 'faltam ' + fmtMetaC(r.falta, m.tipo)}</div>` : ''}</div>`;
+  }).join('')}</div>`;
+}
+function tvPremios() {
+  const ps = S.premios.filter(p => premioCalc(p).st === 'ativo').sort((a, b) => a.fim < b.fim ? -1 : 1).slice(0, 3);
+  return `<div class="tv-title">🎁 Premiações valendo agora</div>
+  <div class="tv-prizes">${ps.map(p => { const c = premioCalc(p); const dias = Math.round((parseISO(p.fim) - parseISO(todayISO())) / 864e5);
+    const alvoOk = (p.regra === 'meta' || p.regra === 'primeiro') && c.alvo;
+    return `<div class="tv-prize">${p.foto ? `<img src="${p.foto}">` : ''}
+      <div class="t">${esc(p.titulo)}</div><div class="p">${esc(p.premio)}</div>
+      <div class="d">${esc(regraTxt(p))}${p.modalidade ? ' · ' + esc(p.modalidade) : ''} · ${dias === 0 ? 'termina HOJE' : `termina em ${dias} dia${dias > 1 ? 's' : ''}`}</div>
+      ${c.ganhadores.length ? `<div class="who" style="color:var(--gold);font-weight:800">🏆 ${c.ganhadores.map(g => esc(g.nome)).join(', ')}</div>` : ''}
+      <div class="who">${c.rk.slice(0, 3).map((r, i) => `<div><span>${['🥇', '🥈', '🥉'][i]} ${esc(r.nome)}</span><b>${fmtMetaC(r.val, p.tipo)}${alvoOk ? ` <span style="color:var(--mut);font-weight:500">/ ${fmtMetaC(c.alvo, p.tipo)}</span>` : ''}</b></div>`).join('')}</div>
+    </div>`; }).join('')}</div>`;
+}
+function tvUltimas() {
+  const [hi] = periodRange('diaria');
+  const l = vendasEntre(hi, hi).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 8);
+  return `<div class="tv-title">Vendas de hoje</div>
+  ${l.length ? `<div class="tv-feed">${l.map(v => { const d = new Date(v.ts || Date.now());
+    return `<div class="it"><span class="h">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="n">${S.tmap[timeDe(v)] ? `<span class="dot" style="background:${S.tmap[timeDe(v)].cor}"></span>` : ''}${esc(v.consultorNome)}</span><span class="mut">${esc(v.modalidade)}</span><span class="val">${compact(v.valor)}</span></div>`; }).join('')}</div>`
+    : `<div class="tv-hero" style="text-align:center"><div style="font-size:3vw;font-weight:800">Nenhuma venda hoje ainda</div><div class="of mt">Quem vai abrir o placar? 🚀</div></div>`}`;
+}
+
+/* ---------- Eventos de comemoração ---------- */
+function tvSnapMetas() {
+  const o = {};
+  metasAtivas().forEach(m => {
+    if (m.escopo === 'cada') consultores().forEach(u => { o[m.id + '|' + u.id] = { p: metaProgress(m, u.id).p, m, quem: u.nome }; });
+    else o[m.id] = { p: metaProgress(m).p, m, quem: metaAlvoNome(m) };
+  });
+  return o;
+}
+function tvSnapPrem() {
+  const o = {};
+  S.premios.forEach(p => { const c = premioCalc(p); if (c.st !== 'ativo') return; c.ganhadores.forEach(g => o[p.id + '|' + g.k] = { p, g }); });
+  return o;
+}
+function tvCheckEvents() {
+  if (!S.vendasInit) return;
+  const m = tvSnapMetas(), pr = tvSnapPrem();
+  if (TV.prevMeta) {
+    Object.entries(m).forEach(([k, x]) => { const old = TV.prevMeta[k]; if (old && old.p < 100 && x.p >= 100) tvEnqueue({ kind: 'meta', x }); });
+    Object.entries(pr).forEach(([k, x]) => { if (!TV.prevPrem[k]) tvEnqueue({ kind: 'premio', x }); });
+  }
+  TV.prevMeta = m; TV.prevPrem = pr;
+}
+function tvEnqueueVenda(v) { tvEnqueue({ kind: 'venda', v }); }
+function tvEnqueue(ev) { TV.Q.push(ev); if (!TV.busy) tvNext(); }
+function tvNext() {
+  const ev = TV.Q.shift(); $('#celeb')?.remove();
+  if (!ev) { TV.busy = false; return; }
+  TV.busy = true;
+  let cls = '', html = '', dur = 8000, som = 'venda', conf = [220, 'normal'];
+  if (ev.kind === 'venda') {
+    const v = ev.v; const grande = Number(v.valor) >= (Number(S.office.vendaGrande) || 500000);
+    const mm = S.metas.find(m => m.ativa !== false && m.escopo === 'escritorio' && m.periodo === 'mensal' && !m.modalidade);
+    const r = mm ? metaProgress(mm) : null; const t = S.tmap[timeDe(v)];
+    if (grande) { cls = 'gold'; dur = 11000; som = 'grande'; conf = [450, 'burst']; }
+    html = `<div class="k">${grande ? '💥 VENDA GIGANTE 💥' : '🎉 VENDEU! 🎉'}</div>
+      <div class="n">${esc(v.consultorNome)}</div><div class="v">${brl(v.valor)}</div>
+      <div class="s">${esc(v.modalidade)}${t ? ' · Time ' + esc(t.nome) : ''}</div>
+      <div class="f">${r ? (r.p >= 100 ? `Meta do mês batida! ${fmtMetaC(r.real, mm.tipo)} vendidos 🏆` : `Meta do mês: ${pctTxt(r.p)} · faltam ${fmtMetaC(r.falta, mm.tipo)}`) : ''}</div>`;
+  } else if (ev.kind === 'meta') {
+    const { m, quem } = ev.x; const r = metaProgress(m, ev.x.m.escopo === 'cada' ? consultores().find(u => u.nome === quem)?.id : undefined);
+    cls = 'gold'; dur = 10000; som = 'meta'; conf = [400, 'burst'];
+    html = `<div class="k">🏆 META BATIDA 🏆</div><div class="n">${esc(quem)}</div>
+      <div class="v">${fmtMetaC(r.real, m.tipo)}</div><div class="s">${esc(m.nome || 'Meta ' + PERIODOS[m.periodo].toLowerCase())} · ${esc(periodoLabel(m))}${m.modalidade ? ' · ' + esc(m.modalidade) : ''}</div>`;
+  } else if (ev.kind === 'premio') {
+    const { p, g } = ev.x; cls = 'purple'; dur = 10000; som = 'premio'; conf = [400, 'burst'];
+    html = `<div class="k">🎁 PRÊMIO CONQUISTADO 🎁</div><div class="n">${esc(g.nome)}</div><div class="v">${esc(p.premio)}</div><div class="s">${esc(p.titulo)}</div>`;
+  }
+  const d = document.createElement('div'); d.id = 'celeb'; d.className = 'celeb ' + cls; d.innerHTML = html;
+  document.body.appendChild(d);
+  if (TV.started) playSound(som);
+  confetti(conf[0], dur - 1500, conf[1]);
+  setTimeout(tvNext, dur);
+}
+
+/* ---------- Som (sintetizado, sem arquivos) ---------- */
+let AC = null;
+function ac() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; }
+function tone(f, t, dur, type = 'triangle', vol = .2) {
+  const c = ac(), o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .05);
+}
+function hit(t, vol = .35, dur = .12, hp = 800) {
+  const c = ac(), b = c.createBuffer(1, c.sampleRate * dur, c.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  f.type = 'highpass'; f.frequency.value = hp; g.gain.value = vol; s.buffer = b; s.connect(f).connect(g).connect(c.destination); s.start(t);
+}
+function kick(t) {
+  const c = ac(), o = c.createOscillator(), g = c.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(40, t + .15);
+  g.gain.setValueAtTime(.6, t); g.gain.exponentialRampToValueAtTime(.001, t + .2); o.connect(g).connect(c.destination); o.start(t); o.stop(t + .25);
+}
+function chord(fs, t, dur, type = 'triangle', vol = .12) { fs.forEach(f => tone(f, t, dur, type, vol)); }
+function playSound(kind) {
+  try {
+    const c = ac(), t = c.currentTime + .05;
+    if (kind === 'teste') { tone(880, t, .15, 'sine', .15); tone(1318.5, t + .12, .25, 'sine', .15); return; }
+    if (kind === 'venda') {
+      // cha-ching + fanfarra curta
+      tone(1975.5, t, .08, 'square', .08); tone(2637, t + .07, .35, 'square', .08); hit(t + .02, .2, .15, 4000);
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { tone(f, t + .45 + i * .11, .22, 'square', .09); });
+      kick(t + .45); kick(t + .67); hit(t + .56, .25); hit(t + .78, .25);
+      chord([1046.5, 1318.5, 1568], t + .9, 1.2, 'triangle', .12); kick(t + .9); hit(t + .9, .3, .3, 2000);
+      tone(2093, t + 1.3, .15, 'sine', .08); tone(2637, t + 1.4, .4, 'sine', .08);
+      return;
+    }
+    if (kind === 'grande' || kind === 'premio') {
+      const n = [[392, .18], [392, .18], [392, .18], [523.25, .6], [392, .25], [523.25, .25], [659.25, 1.2]];
+      let x = t; n.forEach(([f, d], i) => { tone(f, x, d + .05, 'sawtooth', .07); tone(f * 2, x, d, 'square', .04); if (i % 2 === 0) kick(x); hit(x, .18); x += d; });
+      chord([523.25, 659.25, 783.99, 1046.5], x - 1.2, 2, 'triangle', .1);
+      for (let i = 0; i < 12; i++) hit(x - 1.2 + i * .07, .15, .08, 3000);
+      [1568, 2093, 2637, 3136].forEach((f, i) => tone(f, x + i * .08, .3, 'sine', .06));
+      return;
+    }
+    if (kind === 'meta') {
+      [0, 1].forEach(r => [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f * (r ? 1.122 : 1), t + r * .6 + i * .08, .2, 'square', .07)));
+      chord([659.25, 830.6, 987.8, 1318.5], t + 1.3, 2.2, 'triangle', .11); kick(t + 1.3); hit(t + 1.3, .35, .4, 1500);
+      for (let i = 0; i < 8; i++) kick(t + i * .15);
+    }
+  } catch (e) {}
+}
+
+/* ---------- Confete ---------- */
+let confRAF = 0;
+function confetti(n = 220, dur = 6000, mode = 'normal') {
+  const c = $('#confetti'), ctx = c.getContext('2d'); c.width = innerWidth; c.height = innerHeight;
+  const cols = ['#10b981', '#34d399', '#f5b73b', '#fde68a', '#3b82f6', '#ef4444', '#a855f7', '#ffffff', '#ec4899'];
+  const P = [];
+  for (let i = 0; i < n; i++) {
+    const burst = mode === 'burst' && i % 2 === 0;
+    P.push({
+      x: burst ? c.width * (i % 4 < 2 ? .15 : .85) : Math.random() * c.width, y: burst ? c.height + 10 : -20 - Math.random() * c.height * .6,
+      vx: burst ? (i % 4 < 2 ? 1 : -1) * (3 + Math.random() * 9) : (Math.random() - .5) * 4, vy: burst ? -(14 + Math.random() * 16) : 2 + Math.random() * 4,
+      w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, a: Math.random() * 6.3, va: (Math.random() - .5) * .35, col: cols[i % cols.length], circ: Math.random() < .25
+    });
+  }
+  const end = performance.now() + dur; cancelAnimationFrame(confRAF);
+  (function loop() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    P.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += .28; if (p.vy > 5) p.vy = 5; p.vx *= .985; p.a += p.va;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.col;
+      if (p.circ) { ctx.beginPath(); ctx.arc(0, 0, p.h / 1.4, 0, 6.3); ctx.fill(); } else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.a * 2)) + 1);
+      ctx.restore();
+    });
+    if (performance.now() < end) confRAF = requestAnimationFrame(loop); else ctx.clearRect(0, 0, c.width, c.height);
+  })();
+}
+
+boot();
+</script>
+</body>
+</html>
