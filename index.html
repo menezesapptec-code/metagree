@@ -126,7 +126,10 @@ h2{font-size:1.05rem;font-weight:700;margin-bottom:10px}
 .loader{min-height:100vh;display:grid;place-items:center;color:var(--mut)}
 
 /* ===== TV ===== */
-.tv{position:fixed;inset:0;background:radial-gradient(1400px 700px at 10% -20%,#10b98122,transparent),radial-gradient(1000px 600px at 110% 120%,#f5b73b14,transparent),#070d18;display:flex;flex-direction:column;overflow:hidden;cursor:none}
+.tv{position:fixed;inset:0;background:radial-gradient(1400px 700px at 10% -20%,#10b98122,transparent),radial-gradient(1000px 600px at 110% 120%,#f5b73b14,transparent),#070d18;display:flex;flex-direction:column;overflow:hidden}
+.tv.idle{cursor:none}
+.tv-exit{position:fixed;top:1.2vw;left:50%;transform:translateX(-50%);z-index:55;display:flex;gap:10px;background:#0b1220ee;border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 10px 30px #0009;transition:opacity .3s}
+.tv.idle ~ .tv-exit{opacity:0;pointer-events:none}
 .tv-top{display:flex;align-items:center;justify-content:space-between;padding:1.6vw 2.6vw .8vw}
 .tv-top .logo{font-size:1.6vw}
 .tv-top .logo i{width:2.4vw;height:2.4vw;font-size:1.2vw;border-radius:.6vw}
@@ -384,9 +387,11 @@ function metaMensalDe(uid) {
   return m ? Number(m.alvo) : 0;
 }
 
+const qtdPremios = p => p.regra === 'primeiro' ? 1 : (p.regra === 'meta' ? (Number(p.qtdPremios) || 0) : 0);
+const isAlvoRegra = p => p.regra === 'meta' || p.regra === 'primeiro';
 function premioCalc(p) {
   const hoje = todayISO();
-  const st = hoje < p.inicio ? 'futuro' : hoje > p.fim ? 'encerrado' : 'ativo';
+  let st = hoje < p.inicio ? 'futuro' : hoje > p.fim ? 'encerrado' : 'ativo';
   let l = S.vendas.filter(v => v.status !== 'cancelada' && v.data >= p.inicio && v.data <= p.fim && (!p.modalidade || v.modalidade === p.modalidade));
   const isTime = p.competidor === 'time';
   if (!isTime && p.timeId) l = l.filter(v => timeDe(v) === p.timeId);
@@ -404,17 +409,16 @@ function premioCalc(p) {
   const rk = Object.entries(acc).map(([k, val]) => ({ k, val, nome: nomeDe(k) })).sort((a, b) => b.val - a.val);
   let ganhadores = [];
   const byHit = Object.keys(hit).sort((a, b) => hit[a] - hit[b]).map(k => ({ k, nome: nomeDe(k), val: acc[k] }));
-  if (p.regra === 'meta') ganhadores = byHit;
-  else if (p.regra === 'primeiro') ganhadores = byHit.slice(0, 1);
+  const qtd = qtdPremios(p);
+  if (isAlvoRegra(p)) { ganhadores = qtd ? byHit.slice(0, qtd) : byHit; if (qtd && ganhadores.length >= qtd && st === 'ativo') st = 'esgotado'; }
   else if (p.regra === 'maior' && st === 'encerrado' && rk[0]?.val > 0) ganhadores = rk.slice(0, 1);
   else if (p.regra === 'top3' && st === 'encerrado') ganhadores = rk.filter(r => r.val > 0).slice(0, 3);
-  return { st, rk, ganhadores, alvo };
+  return { st, rk, ganhadores, alvo, qtd, restantes: qtd ? Math.max(0, qtd - ganhadores.length) : null };
 }
 function regraTxt(p) {
   const alvo = fmtMeta(p.alvo, p.tipo);
   const quem = p.competidor === 'time' ? 'o time' : 'o consultor';
-  if (p.regra === 'meta') return `Todos que atingirem ${alvo}`;
-  if (p.regra === 'primeiro') return `Primeiro a atingir ${alvo}`;
+  if (isAlvoRegra(p)) { const q = qtdPremios(p); return !q ? `Todos que atingirem ${alvo}` : q === 1 ? `O primeiro a atingir ${alvo}` : `Os ${q} primeiros a atingir ${alvo}`; }
   if (p.regra === 'maior') return `Maior venda acumulada — ${quem} que mais vender`;
   return p.competidor === 'time' ? 'Top 3 times' : 'Top 3 consultores';
 }
@@ -448,7 +452,7 @@ function boot() {
   }
   S.tv = new URLSearchParams(location.search).has('tv');
   auth.onAuthStateChanged(async user => {
-    unsubAll(); S.user = user; S.vendasInit = false;
+    unsubAll(); tvStop(); S.user = user; S.vendasInit = false; S.tv = new URLSearchParams(location.search).has('tv'); S.tab = 'inicio';
     if (!user) return renderLogin();
     S.isSuper = SUPER_EMAILS.includes((user.email || '').toLowerCase());
     if (S.isSuper && !S.suporte) {
@@ -975,9 +979,9 @@ function openMetaForm(m = null) {
 /* ---------- Premiações ---------- */
 function premioCard(p, admin = false) {
   const c = premioCalc(p); const me = S.user.uid;
-  const stB = { ativo: '<span class="badge g">Valendo</span>', futuro: '<span class="badge b">Em breve</span>', encerrado: '<span class="badge">Encerrada</span>' }[c.st];
+  const stB = { ativo: `<span class="badge g">Valendo${c.qtd ? ` · ${c.restantes} de ${c.qtd} prêmio${c.qtd > 1 ? 's' : ''}` : ''}</span>`, esgotado: '<span class="badge y">🏆 Prêmios esgotados</span>', futuro: '<span class="badge b">Em breve</span>', encerrado: '<span class="badge">Encerrada</span>' }[c.st];
   const minha = c.rk.findIndex(r => r.k === me || (p.competidor === 'time' && r.k === S.profile?.timeId));
-  const showAlvo = (p.regra === 'meta' || p.regra === 'primeiro') && c.alvo;
+  const showAlvo = isAlvoRegra(p) && c.alvo;
   const dias = c.st === 'ativo' ? Math.round((parseISO(p.fim) - parseISO(todayISO())) / 864e5) : 0;
   return `<div class="card">
     ${p.foto ? `<img class="prize-img" src="${p.foto}">` : ''}
@@ -995,7 +999,7 @@ function premioCard(p, admin = false) {
 }
 function vPremios(el) {
   const adm = S.role === 'admin';
-  const ord = { ativo: 0, futuro: 1, encerrado: 2 };
+  const ord = { ativo: 0, futuro: 1, esgotado: 2, encerrado: 3 };
   const ps = S.premios.map(p => ({ p, st: premioCalc(p).st })).sort((a, b) => ord[a.st] - ord[b.st] || (a.p.fim < b.p.fim ? -1 : 1));
   el.innerHTML = `<div class="row between mb"><h1>Premiações</h1>${adm ? '<button class="btn gold" id="nPrem">+ Nova premiação</button>' : ''}</div>
   ${adm ? '<p class="mut sm mb">Cadastre campanhas, prêmios e bonificações. O sistema acompanha sozinho quem está mais perto de ganhar e anuncia na TV quando alguém conquista.</p>' : ''}
@@ -1029,19 +1033,20 @@ function openPremioForm(p = null) {
     <label>Quem compete</label><select id="pComp"><option value="consultor" ${p?.competidor !== 'time' ? 'selected' : ''}>Consultores</option><option value="time" ${p?.competidor === 'time' ? 'selected' : ''}>Times</option></select>
     <div id="pTimeW"><label>Restringir a um time (opcional)</label><select id="pTime"><option value="">Todos os consultores</option>${S.times.map(t => `<option value="${t.id}" ${p?.timeId === t.id ? 'selected' : ''}>${esc(t.nome)}</option>`).join('')}</select></div>
     <label>Regra</label><select id="pReg">
-      <option value="meta" ${p?.regra === 'meta' ? 'selected' : ''}>Todos que atingirem um valor</option>
-      <option value="primeiro" ${p?.regra === 'primeiro' ? 'selected' : ''}>O primeiro a atingir um valor</option>
+      <option value="meta" ${isAlvoRegra(p || { regra: 'meta' }) ? 'selected' : ''}>Quem atingir um valor</option>
       <option value="maior" ${p?.regra === 'maior' ? 'selected' : ''}>Quem mais vender no período</option>
       <option value="top3" ${p?.regra === 'top3' ? 'selected' : ''}>Top 3 do período</option></select>
     <label>Medir por</label><select id="pTipo"><option value="valor" ${p?.tipo !== 'cotas' ? 'selected' : ''}>Valor em R$</option><option value="cotas" ${p?.tipo === 'cotas' ? 'selected' : ''}>Quantidade de cotas</option></select>
-    <div id="pAlvoW"><label>Valor a atingir</label><input id="pAlvo" inputmode="numeric"></div>
+    <div id="pAlvoW"><label>Valor a atingir</label><input id="pAlvo" inputmode="numeric">
+      <label>Quantos prêmios serão liberados?</label><input id="pQtd" type="number" min="0" value="${p ? qtdPremios(p) : 1}">
+      <div class="xs mut" style="margin-top:6px">Ex.: 1 = o primeiro que bater leva e a premiação sai do ar · 3 = os 3 primeiros levam · 0 = todos que baterem ganham</div></div>
     <label>Modalidade</label><select id="pMod"><option value="">Todas</option>${mods.map(x => `<option ${p?.modalidade === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><div><label>Início</label><input type="date" id="pIni" value="${p?.inicio || mi}" required></div><div><label>Fim</label><input type="date" id="pFim" value="${p?.fim || mf}" required></div></div>
     <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn gold">Salvar premiação</button></div>
   </form>`, () => {
     const upd = () => {
       $('#pTimeW').style.display = $('#pComp').value === 'time' ? 'none' : 'block';
-      $('#pAlvoW').style.display = ['meta', 'primeiro'].includes($('#pReg').value) ? 'block' : 'none';
+      $('#pAlvoW').style.display = $('#pReg').value === 'meta' ? 'block' : 'none';
     };
     const setAlvo = () => {
       const old = $('#pAlvo'); const nv = old.cloneNode(false); old.replaceWith(nv);
@@ -1053,10 +1058,10 @@ function openPremioForm(p = null) {
     $('#pf').onsubmit = async e => {
       e.preventDefault();
       const t = $('#pTipo').value, reg = $('#pReg').value;
-      const alvo = ['meta', 'primeiro'].includes(reg) ? (t === 'cotas' ? parseInt($('#pAlvo').value, 10) || 0 : parseMoney($('#pAlvo').value)) : 0;
-      if (['meta', 'primeiro'].includes(reg) && !alvo) return toast('Informe o valor a atingir.', 'err');
+      const alvo = reg === 'meta' ? (t === 'cotas' ? parseInt($('#pAlvo').value, 10) || 0 : parseMoney($('#pAlvo').value)) : 0;
+      if (reg === 'meta' && !alvo) return toast('Informe o valor a atingir.', 'err');
       const d = { titulo: $('#pTit').value.trim(), premio: $('#pPre').value.trim(), descricao: $('#pDes').value.trim(), foto,
-        competidor: $('#pComp').value, timeId: $('#pComp').value === 'time' ? '' : $('#pTime').value, regra: reg, tipo: t, alvo,
+        qtdPremios: reg === 'meta' ? Math.max(0, parseInt($('#pQtd').value, 10) || 0) : 0, competidor: $('#pComp').value, timeId: $('#pComp').value === 'time' ? '' : $('#pTime').value, regra: reg, tipo: t, alvo,
         modalidade: $('#pMod').value, inicio: $('#pIni').value, fim: $('#pFim').value };
       if (d.fim < d.inicio) return toast('A data final precisa ser depois da inicial.', 'err');
       const col = db.collection('offices').doc(S.oid).collection('premios');
@@ -1368,17 +1373,27 @@ function renderTV() {
       <div class="tv-stage" id="tvStage"></div>
       <div class="tv-foot"><div id="tvFL"></div><div class="tv-dots" id="tvDots"></div><div id="tvFR"></div></div>
     </div>
+    <div class="tv-exit">${S.role !== 'tv' ? '<button class="btn sm" id="tvBack">← Voltar ao sistema</button>' : ''}<button class="btn sm red" id="tvOut">Sair da conta</button></div>
     ${TV.started ? '' : `<div class="tv-start" id="tvStart"><div class="logo" style="font-size:3vw"><i style="width:4vw;height:4vw;font-size:2vw">M</i>${APP_NAME}</div>
       <p class="mut" style="font-size:1.3vw">Painel de metas e vendas — ${esc(S.office.nome || '')}</p>
       <button class="btn pri" id="tvGo">▶ Iniciar painel com som</button>
-      <p class="mut" style="font-size:1vw">O navegador só libera o som depois de um clique. Dê dois cliques no logo para sair do painel.</p></div>`}`;
+      <p class="mut" style="font-size:1vw">O navegador só libera o som depois de um clique. Para sair do painel, mexa o mouse e use o botão no topo da tela.</p></div>`}`;
     if ($('#tvGo')) $('#tvGo').onclick = tvStart;
     $('#tvLogo').ondblclick = tvExit;
+    if ($('#tvBack')) $('#tvBack').onclick = tvExit;
+    $('#tvOut').onclick = () => confirmar('Sair desta conta? Você volta para a tela de login.', () => { tvStop(); S.suporte = false; auth.signOut(); }, 'Sair');
+    tvIdleArm();
     TV.idx = 0; tvShow(true);
     tvClock(); clearInterval(TV.clk); TV.clk = setInterval(tvClock, 10000);
     tvRotStart();
   } else tvShow(false);
   tvCheckEvents();
+}
+let tvIdleT = 0;
+function tvIdleArm() {
+  const wake = () => { const t = $('.tv'); if (!t) return; t.classList.remove('idle'); clearTimeout(tvIdleT); tvIdleT = setTimeout(() => $('.tv')?.classList.add('idle'), 3000); };
+  if (!TV.idleBound) { TV.idleBound = true; ['mousemove', 'mousedown', 'touchstart', 'keydown'].forEach(e => document.addEventListener(e, () => { if (S.tv) wake(); })); }
+  wake();
 }
 function tvRotStart() {
   clearInterval(TV.rot);
@@ -1467,10 +1482,10 @@ function tvPremios() {
   const ps = S.premios.filter(p => premioCalc(p).st === 'ativo').sort((a, b) => a.fim < b.fim ? -1 : 1).slice(0, 3);
   return `<div class="tv-title">🎁 Premiações valendo agora</div>
   <div class="tv-prizes">${ps.map(p => { const c = premioCalc(p); const dias = Math.round((parseISO(p.fim) - parseISO(todayISO())) / 864e5);
-    const alvoOk = (p.regra === 'meta' || p.regra === 'primeiro') && c.alvo;
+    const alvoOk = isAlvoRegra(p) && c.alvo;
     return `<div class="tv-prize">${p.foto ? `<img src="${p.foto}">` : ''}
       <div class="t">${esc(p.titulo)}</div><div class="p">${esc(p.premio)}</div>
-      <div class="d">${esc(regraTxt(p))}${p.modalidade ? ' · ' + esc(p.modalidade) : ''} · ${dias === 0 ? 'termina HOJE' : `termina em ${dias} dia${dias > 1 ? 's' : ''}`}</div>
+      <div class="d">${esc(regraTxt(p))}${p.modalidade ? ' · ' + esc(p.modalidade) : ''} · ${dias === 0 ? 'termina HOJE' : `termina em ${dias} dia${dias > 1 ? 's' : ''}`}${c.qtd ? ` · <b style="color:var(--gold)">restam ${c.restantes} de ${c.qtd} prêmio${c.qtd > 1 ? 's' : ''}</b>` : ''}</div>
       ${c.ganhadores.length ? `<div class="who" style="color:var(--gold);font-weight:800">🏆 ${c.ganhadores.map(g => esc(g.nome)).join(', ')}</div>` : ''}
       <div class="who">${c.rk.slice(0, 3).map((r, i) => `<div><span>${['🥇', '🥈', '🥉'][i]} ${esc(r.nome)}</span><b>${fmtMetaC(r.val, p.tipo)}${alvoOk ? ` <span style="color:var(--mut);font-weight:500">/ ${fmtMetaC(c.alvo, p.tipo)}</span>` : ''}</b></div>`).join('')}</div>
     </div>`; }).join('')}</div>`;
@@ -1495,7 +1510,7 @@ function tvSnapMetas() {
 }
 function tvSnapPrem() {
   const o = {};
-  S.premios.forEach(p => { const c = premioCalc(p); if (c.st !== 'ativo') return; c.ganhadores.forEach(g => o[p.id + '|' + g.k] = { p, g }); });
+  S.premios.forEach(p => { const c = premioCalc(p); if (c.st !== 'ativo' && c.st !== 'esgotado') return; c.ganhadores.forEach(g => o[p.id + '|' + g.k] = { p, g }); });
   return o;
 }
 function tvCheckEvents() {
