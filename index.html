@@ -6,7 +6,14 @@
 <meta name="theme-color" content="#0b1220">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>MetaCota — Metas e Vendas de Consórcio</title>
+<title>Meta Green — Metas e Vendas de Consórcio</title>
+<meta name="application-name" content="Meta Green">
+<meta name="apple-mobile-web-app-title" content="Meta Green">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -208,9 +215,9 @@ h2{font-size:1.05rem;font-weight:700;margin-bottom:10px}
 <canvas id="confetti"></canvas>
 <script>
 /* =========================================================
-   MetaCota — Gestão de metas e vendas para escritórios de consórcio
+   Meta Green — Gestão de metas e vendas para escritórios de consórcio
    ========================================================= */
-const APP_NAME = 'MetaCota';
+const APP_NAME = 'Meta Green';
 const SUPER_EMAILS = ['agrosafra7@gmail.com', 'menezesapptec@gmail.com'];
 
 // >>> COLE AQUI A CONFIGURAÇÃO DO SEU PROJETO FIREBASE <<<
@@ -1733,6 +1740,7 @@ function confetti(n = 220, dur = 6000, mode = 'normal') {
 }
 
 boot();
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 </script>
 </body>
 </html>
