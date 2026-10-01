@@ -1400,7 +1400,7 @@ function renderTV() {
       <div class="tv-stage" id="tvStage"></div>
       <div class="tv-foot"><div id="tvFL"></div><div class="tv-dots" id="tvDots"></div><div id="tvFR"></div></div>
     </div>
-    <div class="tv-exit">${S.role !== 'tv' ? '<button class="btn sm" id="tvBack">← Voltar ao sistema</button>' : ''}<button class="btn sm red" id="tvOut">Sair da conta</button></div>
+    <div class="tv-exit">${S.role !== 'tv' ? '<button class="btn sm" id="tvBack">← Voltar ao sistema</button>' : ''}<button class="btn sm" id="tvSom">🔊 Testar som</button><button class="btn sm red" id="tvOut">Sair da conta</button></div>
     ${TV.started ? '' : `<div class="tv-start" id="tvStart"><div class="logo" style="font-size:3vw"><i style="width:4vw;height:4vw;font-size:2vw">M</i>${APP_NAME}</div>
       <p class="mut" style="font-size:1.3vw">Painel de metas e vendas — ${esc(S.office.nome || '')}</p>
       <button class="btn pri" id="tvGo">▶ Iniciar painel com som</button>
@@ -1408,6 +1408,7 @@ function renderTV() {
     if ($('#tvGo')) $('#tvGo').onclick = tvStart;
     $('#tvLogo').ondblclick = tvExit;
     if ($('#tvBack')) $('#tvBack').onclick = tvExit;
+    $('#tvSom').onclick = () => { destravarSom(); playSound('venda'); };
     $('#tvOut').onclick = () => confirmar('Sair desta conta? Você volta para a tela de login.', () => { tvStop(); S.suporte = false; auth.signOut(); }, 'Sair');
     tvIdleArm();
     TV.idx = 0; tvShow(true);
@@ -1427,7 +1428,7 @@ function tvRotStart() {
   TV.rot = setInterval(() => { if (TV.busy) return; TV.idx++; tvShow(true); }, Math.max(5, S.office.tvIntervalo || 15) * 1000);
 }
 function tvStart() {
-  ac(); prepararSons(); TV.started = true; $('#tvStart')?.remove();
+  ac(); prepararSons().then(destravarSom); destravarSom();
   try { document.documentElement.requestFullscreen?.(); } catch (e) {}
   tvWake(); playSound('teste');
 }
@@ -1576,7 +1577,7 @@ function tvNext() {
   }
   const d = document.createElement('div'); d.id = 'celeb'; d.className = 'celeb ' + cls; d.innerHTML = html;
   document.body.appendChild(d);
-  if (TV.started) playSound(som);
+  playSound(som);
   confetti(conf[0], dur - 1500, conf[1]);
   setTimeout(tvNext, dur);
 }
@@ -1733,21 +1734,58 @@ function prepararSons() {
       try {
         const [fn, secs] = SOUNDS[k]; const off = new OAC(2, Math.ceil(32000 * secs), 32000);
         CUR = off; fn(.05); CUR = null;
-        SND[k] = await off.startRendering();
+        const buf = await off.startRendering();
+        if (buf) { SND[k] = buf; try { SNDEL[k] = new Audio(wavURL(buf)); SNDEL[k].preload = 'auto'; } catch (e) {} }
         await new Promise(r => setTimeout(r, 80));
       } catch (e) { CUR = null; }
     }
   })();
   return preparando;
 }
+// Converte o som pronto em arquivo WAV (tocado por <audio>, que funciona melhor em navegador de TV)
+const SNDEL = {};
+function wavURL(buf) {
+  const d = buf.getChannelData(0), n = d.length, sr = buf.sampleRate, dv = new DataView(new ArrayBuffer(44 + n * 2));
+  const w = (o, t) => { for (let i = 0; i < t.length; i++) dv.setUint8(o + i, t.charCodeAt(i)); };
+  w(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
+  return URL.createObjectURL(new Blob([dv], { type: 'audio/wav' }));
+}
+// Libera o áudio do navegador (precisa de um clique/tecla do controle)
+function destravarSom() {
+  try { const c = ac(); if (c.state !== 'running') c.resume(); } catch (e) {}
+  Object.values(SNDEL).forEach(el => { if (el._ok) return; try { el.muted = true; const p = el.play(); if (p && p.then) p.then(() => { el.pause(); el.currentTime = 0; el.muted = false; el._ok = true; }).catch(() => { el.muted = false; }); else { el.pause(); el.muted = false; } } catch (e) { el.muted = false; } });
+  TV.started = true; $('#tvStart')?.remove(); tvSomStatus();
+}
+['click', 'keydown', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, () => { if (S.tv) destravarSom(); }, true));
+function tvSomStatus() {
+  const b = $('#tvSom'); if (!b) return;
+  const ok = AC && AC.state === 'running';
+  b.textContent = ok ? '🔊 Testar som' : '🔇 Ativar som';
+}
+function playBuf(kind) {
+  const c = ac();
+  const go = () => {
+    const buf = SND[kind];
+    if (buf) { const src = c.createBufferSource(); src.buffer = buf; src.connect(c.destination); src.start(c.currentTime + .03); }
+    else (SOUNDS[kind] ? SOUNDS[kind][0] : sVenda)(c.currentTime + .08);
+  };
+  if (c.state !== 'running') { const p = c.resume(); if (p && p.then) p.then(go).catch(go); else go(); } else go();
+}
 function playSound(kind) {
   try {
-    const c = ac();
-    if (kind === 'teste') { const t = c.currentTime + .08; tone(880, t, .15, 'sine', .15); tone(1318.5, t + .12, .25, 'sine', .15); return; }
-    const buf = SND[kind];
-    if (buf) { const src = c.createBufferSource(); src.buffer = buf; src.connect(c.destination); src.start(c.currentTime + .03); return; }
-    (SOUNDS[kind] ? SOUNDS[kind][0] : sVenda)(c.currentTime + .08);
-  } catch (e) { console.warn('som', e); }
+    if (kind === 'teste') { const c = ac(); const t = c.currentTime + .08; tone(880, t, .15, 'sine', .15); tone(1318.5, t + .12, .25, 'sine', .15); return; }
+    const el = SNDEL[kind];
+    if (el) {
+      try { el.pause(); el.currentTime = 0; } catch (e) {}
+      el.muted = false; el.volume = 1;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => { try { playBuf(kind); } catch (e) {} });
+      return;
+    }
+    playBuf(kind);
+  } catch (e) { console.warn('som', e); try { playBuf(kind); } catch (e2) {} }
 }
 
 /* ---------- Confete ---------- */
