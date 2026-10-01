@@ -1187,7 +1187,7 @@ function openUserForm(u = null) {
 function openTimeForm(t = null) {
   let cor = t?.cor || TEAM_COLORS[S.times.length % TEAM_COLORS.length];
   openModal(`<h2>${t ? 'Editar time' : 'Novo time'}</h2>
-  <form id="tf"><label>Nome do time</label><input id="tNome" required value="${esc(t?.nome || '')}" placeholder="Ex.: Time Raphael">
+  <form id="tf"><label>Nome do time</label><input id="tNome" required value="${esc(t?.nome || '')}" placeholder="Ex.: Time João">
   <label>Cor</label><div class="chips">${TEAM_COLORS.map(c => `<button type="button" class="chip" data-c="${c}" style="background:${c};width:34px;height:34px;${c === cor ? 'outline:3px solid #fff' : ''}"></button>`).join('')}</div>
   <label>Líder (opcional)</label><select id="tLid"><option value="">—</option>${S.users.filter(u => u.role !== 'tv').map(u => `<option value="${u.id}" ${t?.liderId === u.id ? 'selected' : ''}>${esc(u.nome)}</option>`).join('')}</select>
   <div class="acts"><button type="button" class="btn ghost" data-close>Voltar</button><button class="btn pri">Salvar</button></div></form>`, m => {
