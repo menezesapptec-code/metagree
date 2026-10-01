@@ -206,6 +206,10 @@ h2{font-size:1.05rem;font-weight:700;margin-bottom:10px}
 .celeb.purple .v{color:#e9d5ff;font-size:4.5vw}
 .celeb .s{font-size:2vw;color:#d1fae5;margin-top:1.2vw;font-weight:600}
 .celeb .f{font-size:1.5vw;color:#a7f3d0aa;margin-top:2.4vw}
+.install-pop{position:fixed;left:12px;right:12px;bottom:12px;z-index:95;display:flex;gap:12px;align-items:center;background:var(--card2);border:1px solid var(--pri);border-radius:16px;padding:12px 12px 12px 14px;box-shadow:0 12px 40px #000a;max-width:520px;margin:0 auto;animation:fadein .4s ease}
+.install-pop img{width:46px;height:46px;border-radius:11px;flex-shrink:0}
+.install-pop .t{flex:1;min-width:0}
+.inst-x{background:transparent;border:0;color:var(--mut);font-size:1.15rem;cursor:pointer;padding:6px 8px;line-height:1;align-self:flex-start}
 #confetti{position:fixed;inset:0;z-index:70;pointer-events:none}
 </style>
 </head>
@@ -561,7 +565,7 @@ function renderBlocked(msg) {
    APP (Admin do escritório e Consultor)
    ========================================================= */
 function tabsFor() {
-  if (S.role === 'admin') return [['inicio', 'Painel'], ['vendas', 'Vendas'], ['ranking', 'Ranking'], ['metas', 'Metas'], ['premios', 'Premiações'], ['cancel', 'Cancelamentos'], ['equipe', 'Equipe'], ['hist', 'Histórico'], ['config', 'Configurações']];
+  if (S.role === 'admin') return [['inicio', 'Painel'], ['vendas', 'Vendas'], ['ranking', 'Ranking'], ['metas', 'Metas'], ['premios', 'Premiações'], ['cancel', 'Cancelamentos'], ['equipe', 'Equipe'], ['hist', 'Histórico'], ['config', 'Configurações'], ['conta', 'Minha conta']];
   return [['inicio', 'Início'], ['minhas', 'Minhas vendas'], ['ranking', 'Ranking'], ['premios', 'Premiações'], ['conta', 'Minha conta']];
 }
 function renderApp() {
@@ -1267,7 +1271,13 @@ function vConta(el) {
   el.innerHTML = `<h1 class="mb">Minha conta</h1><div class="card" style="max-width:480px">
     <div class="b">${esc(S.profile.nome)}</div><div class="sm mut">${esc(S.user.email)}</div>
     <label>Nova senha</label><input id="ns" type="password" minlength="6" placeholder="mínimo 6 caracteres">
-    <button class="btn pri mt" id="nsB">Alterar senha</button></div>`;
+    <button class="btn pri mt" id="nsB">Alterar senha</button></div>
+    <div class="card mt" style="max-width:480px"><div class="row" style="flex-wrap:nowrap">
+      <img src="/icon-192.png" alt="" style="width:52px;height:52px;border-radius:12px">
+      <div><div class="b">Baixar app</div><div class="xs mut">Salve o ${APP_NAME} na tela inicial do celular e abra como um aplicativo.</div></div></div>
+      ${isStandalone() ? '<div class="badge g mt">✅ App já instalado neste aparelho</div>' : '<button class="btn pri big mt" id="baixarApp" style="width:100%">📲 Baixar app</button>'}
+    </div>`;
+  if ($('#baixarApp')) $('#baixarApp').onclick = baixarApp;
   $('#nsB').onclick = async () => {
     const s = $('#ns').value; if (s.length < 6) return toast('A senha precisa ter pelo menos 6 caracteres.', 'err');
     try { await S.user.updatePassword(s); toast('Senha alterada.'); $('#ns').value = ''; }
@@ -1377,6 +1387,7 @@ function tvTelas() {
   return l.filter(k => (k !== 'premios' || S.premios.some(p => premioCalc(p).st === 'ativo')) && (k !== 'times' || S.times.length));
 }
 function renderTV() {
+  hideInstall();
   if (!$('.tv')) {
     $('#app').innerHTML = `
     <div class="tv">
@@ -1738,6 +1749,43 @@ function confetti(n = 220, dur = 6000, mode = 'normal') {
     if (performance.now() < end) confRAF = requestAnimationFrame(loop); else ctx.clearRect(0, 0, c.width, c.height);
   })();
 }
+
+/* ---------- Pop-up de instalação no celular ---------- */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const installFechado = () => { try { return Date.now() < +(localStorage.getItem('mg_inst_x') || 0); } catch (e) { return false; } };
+function baixarApp() {
+  if (installEvt) { const ev = installEvt; installEvt = null; hideInstall(); try { ev.prompt(); ev.userChoice.then(() => render()); } catch (e) {} return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  openModal(`<h2>📲 Baixar o ${APP_NAME}</h2>
+    ${ios ? `<p class="mt"><b>No iPhone (Safari):</b></p><p class="mt sm">1. Toque no botão <b>Compartilhar</b> (quadrado com seta ⬆) na barra do Safari.</p>
+      <p class="mt sm">2. Role e toque em <b>Adicionar à Tela de Início</b>.</p><p class="mt sm">3. Toque em <b>Adicionar</b>.</p>`
+    : `<p class="mt"><b>No Android:</b></p><p class="mt sm">1. Toque no menu do navegador (<b>⋮</b> no Chrome ou <b>☰</b> no Samsung Internet).</p>
+      <p class="mt sm">2. Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</p><p class="mt sm">3. Confirme em <b>Instalar</b> / <b>Adicionar</b>.</p>`}
+    <p class="xs mut mt">Depois é só abrir pelo ícone do ${APP_NAME} na tela inicial.</p>
+    <div class="acts"><button class="btn pri" data-close>Entendi</button></div>`);
+}
+function hideInstall() { $('#instPop')?.remove(); }
+function showInstall() {
+  if (isStandalone() || installFechado() || S.tv || $('#instPop')) return;
+  const ua = navigator.userAgent, ios = /iphone|ipad|ipod/i.test(ua), mobile = ios || /android/i.test(ua);
+  if (!installEvt && !mobile) return;
+  const txt = installEvt ? 'Acesse direto da tela inicial, como um aplicativo.'
+    : ios ? 'Toque em <b>Compartilhar</b> (quadrado com seta ⬆) e depois em <b>Adicionar à Tela de Início</b>.'
+    : 'Abra o menu do navegador (⋮ ou ☰) e toque em <b>Adicionar à tela inicial</b> ou <b>Instalar app</b>.';
+  const d = document.createElement('div'); d.id = 'instPop'; d.className = 'install-pop';
+  d.innerHTML = `<img src="/icon-192.png" alt=""><div class="t"><div class="b">Instale o ${APP_NAME} no celular</div><div class="xs mut" style="margin-top:2px">${txt}</div></div>
+    ${installEvt ? '<button class="btn pri sm" id="instGo">Instalar</button>' : ''}<button class="inst-x" id="instX" aria-label="Fechar">✕</button>`;
+  document.body.appendChild(d);
+  $('#instX').onclick = () => { try { localStorage.setItem('mg_inst_x', Date.now() + 3 * 864e5); } catch (e) {} hideInstall(); };
+  if ($('#instGo')) $('#instGo').onclick = async () => {
+    const ev = installEvt; installEvt = null; hideInstall();
+    try { ev.prompt(); await ev.userChoice; } catch (e) {}
+  };
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; hideInstall(); showInstall(); });
+window.addEventListener('appinstalled', () => { installEvt = null; hideInstall(); if (S.tab === 'conta') render(); toast('App instalado! Procure o ícone na tela inicial.'); });
+setTimeout(showInstall, 3500);
 
 boot();
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
